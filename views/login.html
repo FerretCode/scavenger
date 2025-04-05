@@ -1,17 +1,30 @@
 <!DOCTYPE html>
-<html>
-<head><title>Login</title></head>
-<body>
-    <form method="POST" action="/login">
-        <div>
-            <label>Username:</label>
-            <input type="text" name="username">
+<html lang="en-US" data-theme="dark">
+<head>
+    <title>Login</title>
+    <link href="https://cdn.jsdelivr.net/npm/daisyui@5" rel="stylesheet" type="text/css" />
+    <link href="https://cdn.jsdelivr.net/npm/daisyui@5/themes.css" rel="stylesheet" type="text/css" />
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+</head>
+<body class="flex">
+    <div class="flex items-center justify-center h-screen w-screen">
+        <div class="bg-gray-800 rounded-box shadow-lg p-12">
+            <form method="POST" action="/login">
+                <div class="flex flex-col gap-8">
+                    <div>
+                        <label class="mr-2">Username:</label>
+                        <input type="text" name="username">
+                    </div>
+                    <div>
+                        <label class="mr-2">Password:</label>
+                        <input type="password" name="password">
+                    </div>
+                    <button type="submit" class="bg-gray-600 px-8 py-2 shadow-sm rounded hover:cursor-pointer">
+                        Login
+                    </button>
+                </div>
+            </form>
         </div>
-        <div>
-            <label>Password:</label>
-            <input type="password" name="password">
-        </div>
-        <button type="submit">Login</button>
-    </form>
+    </div>
 </body>
 </html>
