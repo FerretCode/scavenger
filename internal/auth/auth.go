@@ -32,8 +32,7 @@ func RenderLogin(w http.ResponseWriter, r *http.Request, templates *template.Tem
 		}
 	}
 
-	t := template.Must(template.ParseFiles("login.html"))
-	t.ExecuteTemplate(w, "login.html", nil)
+	templates.ExecuteTemplate(w, "login.html", nil)
 
 	return nil
 }
