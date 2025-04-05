@@ -32,10 +32,48 @@
     <!-- main content area takes 3/4 of screen -->
     <div class="w-3/4 p-8" id="contentArea">
       <!-- fefault content shown on page load -->
+
       <h2 class="text-2xl font-bold">Welcome to Scavenger</h2>
       <p class="mt-4">Please select a menu item to see more information.</p>
     </div>
   </div>
+
+  <script>
+    // Function to display dynamic content based on the selected menu item
+    function showContent(contentType) {
+      const contentArea = document.getElementById('contentArea');
+
+      // Example content sections
+      const contentMap = {
+        createWorkflow: `
+            <h2 class="text-xl font-bold">Create Your Scraping Workflow</h2>
+        `,
+        messaging: `
+          <h2 class="text-xl font-bold">Messaging</h2>
+          <p>Here is the messaging page. You can send messages to other users.</p>
+        `,
+        politeMessage: `
+          <h2 class="text-xl font-bold">Polite Messaging</h2>
+          <p>Here are some tips on how to send polite messages:</p>
+          <ul class="list-disc pl-5">
+            <li>Always be courteous and respectful.</li>
+            <li>Use proper grammar and spelling.</li>
+            <li>Avoid being too demanding.</li>
+          </ul>
+        `,
+        settings: `
+          <h2 class="text-xl font-bold">Settings</h2>
+          <p>Adjust your account settings here.</p>
+        `
+      };
+
+      // Set the content based on the selected menu item
+      contentArea.innerHTML = contentMap[contentType] || `
+        <h1 class="text-2xl font-bold">Welcome</h1>
+        <p class="mt-4">Please select a menu item to see more information.</p>
+      `;
+    }
+  </script>
 
   <!-- bring in the tailwind stuff -->
   <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
