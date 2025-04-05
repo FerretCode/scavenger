@@ -2,15 +2,14 @@ package main
 
 import (
 	"context"
-	"crypto/rand"
-	"encoding/hex"
+	"html/template"
 	"log"
+	"log/slog"
 	"net/http"
 	"os"
-	"sync"
-	"text/template"
 	"time"
 
+	"github.com/ferretcode/scavenger/internal/auth"
 	"github.com/go-chi/chi/v5"
 	"github.com/joho/godotenv"
 	"go.mongodb.org/mongo-driver/v2/mongo"
@@ -18,19 +17,29 @@ import (
 	"go.mongodb.org/mongo-driver/v2/mongo/readpref"
 )
 
-const (
-	sessionsCookieName = "sessions"
-	adminUsername      = "admin"
-	adminPassword      = "password"
-)
+var templates *template.Template
+var logger *slog.Logger
 
-var (
-	sessionsMu sync.Mutex
-	sessions   = make(map[string]bool) // map[sessionToken]isAuthenticated
-)
+func parseTemplates() error {
+	var err error
+
+	files := []string{
+		"./views/index.html",
+		"./views/error.html",
+	}
+
+	templates, err = template.ParseFiles(files...)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
 
 func main() {
-	// Read environemnt
+	logger = slog.New(slog.NewJSONHandler(os.Stdout, nil))
+	slog.SetDefault(logger)
+
 	err := godotenv.Load()
 	if err != nil {
 		log.Fatal("Error loading .env file")
@@ -59,81 +68,21 @@ func main() {
 
 	r := chi.NewRouter()
 
-	r.With(requireAuth).Get("/", func(w http.ResponseWriter, r *http.Request) {
+	r.With(auth.RequireAuth).Get("/", func(w http.ResponseWriter, r *http.Request) {
 		t := template.Must(template.ParseFiles("views/index.html"))
 		t.Execute(w, nil)
 	})
 
 	r.Get("/login", func(w http.ResponseWriter, r *http.Request) {
-		// Check if user is already authenticated
-		cookie, err := r.Cookie(sessionsCookieName)
-		if err == nil {
-			sessionsMu.Lock()
-			valid := sessions[cookie.Value]
-			sessionsMu.Unlock()
-
-			if valid {
-				http.Redirect(w, r, "/", http.StatusSeeOther)
-				return
-			}
-		}
-
-		t := template.Must(template.ParseFiles("views/login.html"))
-		t.Execute(w, nil)
+		handleError(auth.RenderLogin(w, r, templates), w, "login/render")
 	})
 
 	r.Post("/login", func(w http.ResponseWriter, r *http.Request) {
-		if err := r.ParseForm(); err != nil {
-			http.Error(w, "Bad request", http.StatusBadRequest)
-			return
-		}
-
-		// Check credentials
-		username := r.FormValue("username")
-		password := r.FormValue("password")
-		if username != adminUsername || password != adminPassword {
-			http.Error(w, "Invalid credentials", http.StatusUnauthorized)
-			return
-		}
-
-		// Generate session token for authenticated user
-		token, err := generateSessionToken()
-		if err != nil {
-			http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
-			return
-		}
-
-		sessionsMu.Lock()
-		sessions[token] = true
-		sessionsMu.Unlock()
-
-		http.SetCookie(w, &http.Cookie{
-			Name:     sessionsCookieName,
-			Value:    token,
-			Path:     "/",
-			HttpOnly: true,
-			Secure:   false, // change to true if using HTTPS
-		})
-
-		http.Redirect(w, r, "/", http.StatusSeeOther)
+		handleError(auth.Login(w, r), w, "login")
 	})
 
 	r.Get("/logout", func(w http.ResponseWriter, r *http.Request) {
-		cookie, err := r.Cookie(sessionsCookieName)
-		if err == nil {
-			sessionsMu.Lock()
-			delete(sessions, cookie.Value)
-			sessionsMu.Unlock()
-		}
-
-		http.SetCookie(w, &http.Cookie{
-			Name:   sessionsCookieName,
-			Value:  "",
-			Path:   "/",
-			MaxAge: -1,
-		})
-
-		http.Redirect(w, r, "/login", http.StatusSeeOther)
+		handleError(auth.Logout(w, r), w, "logout")
 	})
 
 	log.Println("Running web server http://localhost:3000")
@@ -143,34 +92,9 @@ func main() {
 	}
 }
 
-func generateSessionToken() (string, error) {
-	b := make([]byte, 32)
-
-	_, err := rand.Read(b)
+func handleError(err error, w http.ResponseWriter, svc string) {
 	if err != nil {
-		return "", err
+		http.Error(w, "there was an error processing your request", http.StatusInternalServerError)
+		logger.Error("error processing request", "svc", svc, "err", err)
 	}
-
-	return hex.EncodeToString(b), nil
-}
-
-func requireAuth(next http.Handler) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		cookie, err := r.Cookie(sessionsCookieName)
-		if err != nil {
-			http.Redirect(w, r, "/login", http.StatusFound)
-			return
-		}
-
-		sessionsMu.Lock()
-		valid := sessions[cookie.Value]
-		sessionsMu.Unlock()
-
-		if !valid {
-			http.Redirect(w, r, "/login", http.StatusFound)
-			return
-		}
-
-		next.ServeHTTP(w, r)
-	})
 }
