@@ -29,12 +29,12 @@
       </ul>
     </div>
 
-    <!-- main content area takes 3/4 of screen -->
-    <div class="w-3/4 p-8" id="contentArea">
+    <!-- main content area takes 2/4 of screen -->
+    <div class="w-2/4 p-8" id="contentArea">
       <!-- fefault content shown on page load -->
       <h2 class="text-xl font-bold">Create Your Scraping Workflow</h2>
       <br>
-      <form method="POST" action="/workflow-submit">
+      <form method="POST" action="/workflow-execute">
         <div>
           <div class="pb-4">
             <label for="websiteInput" id="websiteInputLabel">Website URL</label>
@@ -45,7 +45,7 @@
 
         <div>
           <div class="pb-4">
-            <label for="cronInput" id="cronInputLabel">Website URL</label>
+            <label for="cronInput" id="cronInputLabel">Cron String</label>
           </div>
           <input type="text" id="cronInput" required>
         </div>
@@ -60,7 +60,26 @@
         <br>
 
         <div>
-          <label for="fieldAddition">Add a JSON Field</label>
+          <div id="fieldAddition">
+            <div class="fieldContent">
+              <span class="individualField flex gap-8">
+                <div class="flex flex-col w-1/4">
+                  <label for="fieldNameInput" class="mb-4" id="fieldNameInputLabel">Field Name</label>
+                  <input type="text" class="mb-4" id="fieldNameInput" required>
+                  <!-- <textarea rows="4" cols="50" class="p-2" placeholder="Enter your field name here..."></textarea> -->
+
+                  <label for="fieldTypeInput" class="mb-4" id="fieldTypeInputLabel">Field Type</label>
+                  <input type="text" class="mb-4" id="fieldTypeInput" placeholder="ex. int, string, etc." required>
+                  <!-- <textarea rows="4" cols="50" class="p-2" placeholder="Enter your field type here... (ex. int, string, etc.)"></textarea> -->
+                </div>
+                <div class="flex flex-col w-1/4">
+                  <label for="fieldDescInput" class="mb-4" id="fieldDescInputLabel">Field Description</label>
+                  <textarea rows="4" cols="50" class="p-2" placeholder="Enter your field description here..."></textarea>
+                </div>
+              </span>
+              <button type="button" class="btn btn-success ml-1 mb-4 mt-4 text-lg">Add a JSON Field</button>
+            </div>
+          </div>
         </div>
         <br>
       </form>
@@ -68,7 +87,22 @@
       <!-- <h2 class="text-2xl font-bold">Welcome to Scavenger</h2>
       <p class="mt-4">Please select a menu item to see more information.</p> -->
     </div>
+
+    <!-- right sidebar menu takes 1/4 of screen -->
+    <div class="w-1/4 bg-base-200 h-screen p-4">
+      <ul class="menu bg-base-200 rounded-box w-full" data-theme="luxury">
+        <li><button class="menu-item" onclick="showContent('createWorkflow')">Create New Workflow</button></li>
+        <li><button class="menu-item" onclick="showContent('messaging')">Messaging</button></li>
+        <li><button class="menu-item" onclick="showContent('politeMessage')">Polite Messaging</button></li>
+        <li><button class="menu-item" onclick="showContent('settings')">Settings</button></li>
+      </ul>
+    </div>
   </div>
+
+  <!-- script to create a new form for adding a JSON field -->
+  <script>
+
+  </script>
 
   <!-- script to change the content shown in the content box -->
   <script>
