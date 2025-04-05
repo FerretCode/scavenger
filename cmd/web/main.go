@@ -1,19 +1,27 @@
 package main
 
 import (
+	"context"
 	"crypto/rand"
 	"encoding/hex"
 	"log"
 	"net/http"
+	"os"
 	"sync"
 	"text/template"
+	"time"
 
 	"github.com/go-chi/chi/v5"
+	"github.com/joho/godotenv"
+	"go.mongodb.org/mongo-driver/v2/mongo"
+	"go.mongodb.org/mongo-driver/v2/mongo/options"
+	"go.mongodb.org/mongo-driver/v2/mongo/readpref"
 )
 
 const (
-	adminUsername = "admin"
-	adminPassword = "password"
+	sessionsCookieName = "sessions"
+	adminUsername      = "admin"
+	adminPassword      = "password"
 )
 
 var (
@@ -22,13 +30,54 @@ var (
 )
 
 func main() {
+	// Read environemnt
+	err := godotenv.Load()
+	if err != nil {
+		log.Fatal("Error loading .env file")
+	}
+
+	dsn := os.Getenv("DATABASE_URL")
+	if dsn == "" {
+		log.Fatal("missing env: DATABASE_URL")
+	}
+
+	// Connect to MongoDB
+	client, err := mongo.Connect(options.Client().ApplyURI(dsn))
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer func() {
+		if err = client.Disconnect(context.Background()); err != nil {
+			panic(err)
+		}
+	}()
+
+	// Ping the database
+	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+	defer cancel()
+	_ = client.Ping(ctx, readpref.Primary())
+
 	r := chi.NewRouter()
 
 	r.With(requireAuth).Get("/", func(w http.ResponseWriter, r *http.Request) {
-		w.Write([]byte("Scavenger"))
+		t := template.Must(template.ParseFiles("views/index.html"))
+		t.Execute(w, nil)
 	})
 
 	r.Get("/login", func(w http.ResponseWriter, r *http.Request) {
+		// Check if user is already authenticated
+		cookie, err := r.Cookie(sessionsCookieName)
+		if err == nil {
+			sessionsMu.Lock()
+			valid := sessions[cookie.Value]
+			sessionsMu.Unlock()
+
+			if valid {
+				http.Redirect(w, r, "/", http.StatusSeeOther)
+				return
+			}
+		}
+
 		t := template.Must(template.ParseFiles("views/login.html"))
 		t.Execute(w, nil)
 	})
@@ -59,7 +108,7 @@ func main() {
 		sessionsMu.Unlock()
 
 		http.SetCookie(w, &http.Cookie{
-			Name:     "session",
+			Name:     sessionsCookieName,
 			Value:    token,
 			Path:     "/",
 			HttpOnly: true,
@@ -70,7 +119,7 @@ func main() {
 	})
 
 	r.Get("/logout", func(w http.ResponseWriter, r *http.Request) {
-		cookie, err := r.Cookie("session")
+		cookie, err := r.Cookie(sessionsCookieName)
 		if err == nil {
 			sessionsMu.Lock()
 			delete(sessions, cookie.Value)
@@ -78,7 +127,7 @@ func main() {
 		}
 
 		http.SetCookie(w, &http.Cookie{
-			Name:   "session",
+			Name:   sessionsCookieName,
 			Value:  "",
 			Path:   "/",
 			MaxAge: -1,
@@ -88,7 +137,7 @@ func main() {
 	})
 
 	log.Println("Running web server http://localhost:3000")
-	err := http.ListenAndServe(":3000", r)
+	err = http.ListenAndServe(":3000", r)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -105,7 +154,7 @@ func generateSessionToken() (string, error) {
 
 func requireAuth(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		cookie, err := r.Cookie("session")
+		cookie, err := r.Cookie(sessionsCookieName)
 		if err != nil {
 			http.Redirect(w, r, "/login", http.StatusFound)
 			return
