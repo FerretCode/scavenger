@@ -13,6 +13,7 @@ import (
 	"cloud.google.com/go/iam/apiv1/iampb"
 	run "cloud.google.com/go/run/apiv2"
 	"cloud.google.com/go/run/apiv2/runpb"
+	"go.mongodb.org/mongo-driver/v2/bson"
 	"go.mongodb.org/mongo-driver/v2/mongo"
 )
 
@@ -38,6 +39,30 @@ type Workflow struct {
 	Prompt     string `json:"prompt"`
 	Cron       string `json:"cron"`
 	Schema     Schema `json:"schema"`
+}
+
+
+func Delete (w http.ResponseWriter, r *http.Request, db *mongo.Client, runClient *run.ServicesClient, ctx context.Context ) error {
+	err := r.ParseForm()
+	if err != nil{
+		return err
+	}
+
+	workflowName := r.PostForm.Get("workflowName")
+ 
+	workflow := Workflow{}
+	workflow.Name = workflowName
+
+	bsonFilter := bson.D{{Key:"workflowName",Value: workflowName},}
+	fmt.Println(bsonFilter)
+	
+
+	_, err = db.Database(os.Getenv("DATABASE_NAME")).Collection("workflows").DeleteOne(ctx,bsonFilter)
+	if err != nil{
+		return err
+	}
+
+	return nil
 }
 
 func Create(w http.ResponseWriter, r *http.Request, db *mongo.Client, runClient *run.ServicesClient, ctx context.Context) error {
@@ -193,8 +218,8 @@ func Create(w http.ResponseWriter, r *http.Request, db *mongo.Client, runClient 
 		return err
 	}
 
+  
 	workflowName = strings.ReplaceAll(strings.ToLower(workflowName), " ", "_")
-
 	workflow := Workflow{
 		Name:       workflowName,
 		ServiceUri: service.Uri,
