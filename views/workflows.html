@@ -40,15 +40,37 @@
   <div class="flex">
     <!-- left sidebar menu takes 1/4 of screen -->
     <div class="w-1/4 bg-base-200 min-h-screen p-4">
-      <ul class="menu bg-base-200 rounded-box w-full">
-        <li><button class="menu-item" onclick="showContent('createWorkflow')">Create New Workflow</button></li>
-        <!-- TEMPLATE: insert menu options for each saved workflow -->
+      <ul class="menu bg-base-200 rounded-box w-full space-y-2">
+        <!-- Create new workflow -->
+        <li class="flex justify-between items-center">
+          <button class="menu-item text-left flex-1" onclick="showContent('createWorkflow')">
+            Create New Workflow
+          </button>
+        </li>
+
+        <!-- create all of the workflow items -->
         {{range .Workflows}}
-        <li><button class="menu-item" onclick="showContent('{{ .Name }}')">
-            {{ .Name }}</button></li>
+        <li>
+          <div class="menu-item flex justify-between items-center gap-2">
+            <!-- Clickable workflow name -->
+            <button onclick="showContent('{{ .Name }}')" class="text-left flex-1 truncate">
+              {{ .Name }}
+            </button>
+
+            <!-- Delete form -->
+            <form method="POST" action="/workflows/delete" onsubmit="return confirm('Delete workflow {{ .Name }}?')">
+              <input type="hidden" name="workflowName" value="{{ .Name }}">
+              <button type="submit" class="text-red-500 hover:text-red-700 text-lg px-2 leading-none" title="Delete Workflow">
+                ✕
+              </button>
+            </form>
+          </div>
+        </li>
         {{end}}
       </ul>
+
     </div>
+
 
     <!-- main content area takes 2/4 of screen -->
     <div class="w-2/4 p-8" id="contentArea">
