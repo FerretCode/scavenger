@@ -136,7 +136,7 @@ func main() {
 
 	mockWorkflows := dashboard.DashboardData{
 		Workflows:   workflows,
-		TopCardData: dashboard.GetTopDashData(),
+		TopCardData: dashboard.GetTopDashData(runClient, ctx),
 	}
 
 	type DashboardLastTwo struct {
