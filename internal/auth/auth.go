@@ -7,14 +7,13 @@ import (
 	"crypto/subtle"
 	"encoding/base64"
 	"encoding/hex"
-	"fmt"
 	"html/template"
 	"log/slog"
 	"net/http"
 	"os"
 	"sync"
 
-	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/v2/bson"
 	"go.mongodb.org/mongo-driver/v2/mongo"
 )
 
@@ -153,25 +152,27 @@ func RequireAPIKey(ctx context.Context, db *mongo.Client, logger *slog.Logger) f
 			apiKey := r.Header.Get("X-API-Key")
 
 			hash := hashToken(apiKey)
-
-			filter := bson.D{{"hash", hash}}
+			encoded := base64.StdEncoding.EncodeToString(hash)
+			filter := bson.D{{"hash", encoded}}
 
 			res := db.Database("scavenger").Collection("api_keys").FindOne(ctx, filter)
 
 			if res.Err() != nil {
+				if res.Err() == mongo.ErrNoDocuments {
+					http.Error(w, "unauthorized", http.StatusUnauthorized)
+					return
+				}
+
 				logger.Error("error fetching api key from database", "err", res.Err())
 				http.Error(w, "error authenticating your request", http.StatusInternalServerError)
 				return
 			}
 
 			key := ApiKey{}
-			fmt.Println(key.Hash)
-
-			fmt.Printf("%T\n", key.Hash)
 
 			err := res.Decode(&key)
 			if err != nil {
-				logger.Error("error fetching api key from database", "err", res.Err())
+				logger.Error("error fetching api key from database", "err", err)
 				http.Error(w, "error authenticating your request", http.StatusInternalServerError)
 				return
 			}
@@ -184,10 +185,12 @@ func RequireAPIKey(ctx context.Context, db *mongo.Client, logger *slog.Logger) f
 			}
 
 			comparisonResult := subtle.ConstantTimeCompare(hash, comparisonHash)
-			if comparisonResult != 0 {
+			if comparisonResult != 1 {
 				http.Error(w, "incorrect api key", http.StatusUnauthorized)
 				return
 			}
+
+			next.ServeHTTP(w, r)
 		})
 	}
 }
