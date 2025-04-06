@@ -303,11 +303,3 @@ func GetRunningWorkflows(runClient *run.ServicesClient, ctx context.Context) (in
 
 	return totalContainers, nil
 }
-
-func GetDocumentScraped() (int, error) {
-	return 2, nil
-}
-
-func GetActiveClients() (int, error) {
-	return 3, nil
-}
