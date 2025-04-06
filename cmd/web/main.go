@@ -109,35 +109,8 @@ func main() {
 	defer cancel()
 	_ = db.Ping(pingCtx, readpref.Primary())
 
-	// Retrieve all the workflows
-	cur, err := db.Database("scavenger").Collection("workflows").Find(ctx, bson.D{{}})
-	if err != nil {
-		logger.Error("error retrieving workflows", "err", err)
-		return
-	}
-	defer cur.Close(context.Background())
-
-	var workflows []workflow.Workflow
-	for cur.Next(context.Background()) {
-		var workflow workflow.Workflow
-		if err := cur.Decode(&workflow); err != nil {
-			log.Fatal(err)
-		}
-		workflows = append(workflows, workflow)
-	}
-
-	if err := cur.Err(); err != nil {
-		logger.Error("error parsing workflows", "err", err)
-		return
-	}
-
 	// CODE STARTS HERE
 	r := chi.NewRouter()
-
-	mockWorkflows := dashboard.DashboardData{
-		Workflows:   workflows,
-		TopCardData: dashboard.GetTopDashData(runClient, ctx),
-	}
 
 	type DashboardLastTwo struct {
 		DocScraped  int
@@ -150,17 +123,39 @@ func main() {
 	}
 
 	r.With(auth.RequireAuth).Get("/", func(w http.ResponseWriter, r *http.Request) {
-		mockWorkflows.TopCardData = dashboard.GetTopDashData(runClient, ctx)
-		mockWorkflows.TopCardData.DocumentsScraped = lastTwoCards.DocScraped
-		mockWorkflows.TopCardData.ClientConnections = lastTwoCards.CliConnects
-		handleError(templates.ExecuteTemplate(w, "dashboard.html", mockWorkflows), w, "dashboard/render")
+		workflows, err := getWorkflows(db)
+		if err != nil {
+			handleError(err, w, "index")
+			return
+		}
+
+		data := dashboard.DashboardData{
+			Workflows:   workflows,
+			TopCardData: dashboard.GetTopDashData(runClient, ctx),
+		}
+
+		data.TopCardData = dashboard.GetTopDashData(runClient, ctx)
+		data.TopCardData.DocumentsScraped = lastTwoCards.DocScraped
+		data.TopCardData.ClientConnections = lastTwoCards.CliConnects
+		handleError(templates.ExecuteTemplate(w, "dashboard.html", data), w, "dashboard/render")
 	})
 
 	r.Route("/workflows", func(r chi.Router) {
 		r.Use(auth.RequireAuth)
 
 		r.Get("/", func(w http.ResponseWriter, r *http.Request) {
-			handleError(templates.ExecuteTemplate(w, "workflows.html", mockWorkflows), w, "workflows/render")
+			workflows, err := getWorkflows(db)
+			if err != nil {
+				handleError(err, w, "workflows/fetch")
+				return
+			}
+
+			data := dashboard.DashboardData{
+				Workflows:   workflows,
+				TopCardData: dashboard.GetTopDashData(runClient, ctx),
+			}
+
+			handleError(templates.ExecuteTemplate(w, "workflows.html", data), w, "workflows/render")
 		})
 
 		r.Post("/create", func(w http.ResponseWriter, r *http.Request) {
@@ -341,6 +336,26 @@ func main() {
 		logger.Error("error serving http server", "error", err)
 		return
 	}
+}
+
+func getWorkflows(db *mongo.Client) ([]workflow.Workflow, error) {
+	// Retrieve all the workflows
+	cur, err := db.Database("scavenger").Collection("workflows").Find(context.Background(), bson.D{{}})
+	if err != nil {
+		return nil, err
+	}
+	defer cur.Close(context.Background())
+
+	var workflows []workflow.Workflow
+	for cur.Next(context.Background()) {
+		var workflow workflow.Workflow
+		if err := cur.Decode(&workflow); err != nil {
+			log.Fatal(err)
+		}
+		workflows = append(workflows, workflow)
+	}
+
+	return workflows, cur.Err()
 }
 
 func handleError(err error, w http.ResponseWriter, svc string) {
