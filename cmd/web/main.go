@@ -211,6 +211,7 @@ func main() {
 	}
 
 	r.With(auth.RequireAuth).Get("/", func(w http.ResponseWriter, r *http.Request) {
+		handleError(dashboard.GetTopDashData(runClient, ctx))
 		handleError(templates.ExecuteTemplate(w, "dashboard.html", mockWorkflows), w, "dashboard/render")
 	})
 

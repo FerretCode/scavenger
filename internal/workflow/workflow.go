@@ -211,7 +211,28 @@ func generateServiceID() string {
 	return sb.String()
 }
 
-func GetRunningWorkflows() (int, error) {
+func GetRunningWorkflows(runClient run.ServicesClient, ctx context.Context) (int, error) {
+
+	parent := fmt.Sprintf("projects/%s/locations/%s", os.Getenv("GCP_PROJECT_ID"), os.Getenv("GCP_LOCATION"))
+
+	url := fmt.Sprintf("https://run.googleapis.com/v2/%s/services", parent)
+
+	req, err := http.NewRequest("GET", url, nil)
+	if err != nil {
+		return 0, err
+	}
+	req.Header.Set("Content-Type", "application/json")
+
+	client := &http.Client{}
+	resp, err := client.Do(req)
+	if err != nil {
+		return 0, err
+	}
+
+	fmt.Println("INTERESTING")
+	fmt.Println(resp)
+	fmt.Println("AFTER RESP")
+
 	return 1, nil
 }
 

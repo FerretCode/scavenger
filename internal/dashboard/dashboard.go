@@ -1,6 +1,9 @@
 package dashboard
 
 import (
+	"context"
+
+	run "cloud.google.com/go/run/apiv2"
 	"github.com/ferretcode/scavenger/internal/workflow"
 )
 
@@ -15,8 +18,8 @@ type DashboardData struct {
 	TopCardData TopDashData
 }
 
-func GetTopDashData() TopDashData {
-	running, err := workflow.GetRunningWorkflows()
+func GetTopDashData(runClient run.ServicesClient, ctx context.Context) TopDashData {
+	running, err := workflow.GetRunningWorkflows(runClient, ctx)
 	if err != nil {
 		running = 0 // or handle error
 	}
