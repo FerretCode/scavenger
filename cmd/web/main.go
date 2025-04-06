@@ -6,6 +6,10 @@ import (
 	"log"
 	"log/slog"
 	"net/http"
+	"net/http/httputil"
+	"net/url"
+	"sync"
+	"text/template"
 	"os"
 	"time"
 
@@ -113,4 +117,20 @@ func handleError(err error, w http.ResponseWriter, svc string) {
 		http.Error(w, "there was an error processing your request", http.StatusInternalServerError)
 		logger.Error("error processing request", "svc", svc, "err", err)
 	}
+}
+
+//taking the host req
+//creatign a reverse proxy using httputil
+func connectingHostToUser(hostString string)(*httputil.ReverseProxy,error){
+	url, err := url.Parse(hostString)
+	if err != nil{
+		return nil, err
+	}
+	return httputil.NewSingleHostReverseProxy(url), nil
+}
+
+func proxyRequestHandler(proxy *httputil.ReverseProxy) func(http.ResponseWriter, *http.Request){
+		return func(w http.ResponseWriter, r *http.Request){
+				proxy.ServeHTTP(w,r)
+		}		
 }
