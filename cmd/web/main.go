@@ -14,6 +14,7 @@ import (
 	run "cloud.google.com/go/run/apiv2"
 	secretmanager "cloud.google.com/go/secretmanager/apiv1"
 	"github.com/ferretcode/scavenger/internal/auth"
+	"github.com/ferretcode/scavenger/internal/dashboard"
 	"github.com/ferretcode/scavenger/internal/workflow"
 	"github.com/go-chi/chi/v5"
 	"github.com/joho/godotenv"
@@ -41,34 +42,6 @@ func parseTemplates() error {
 	}
 
 	return nil
-}
-
-func getRunningWorkflows() int {
-	return 1
-}
-
-func getDocumentScraped() int {
-	return 2
-}
-
-func getActiveClients() int {
-	return 3
-}
-
-type topDashData struct {
-	RunningWorkflows  int
-	DocumentsScraped  int
-	ClientConnections int
-}
-
-func getTopDashData() topDashData {
-	dashboardDataObj := topDashData{
-		RunningWorkflows:  getRunningWorkflows(),
-		DocumentsScraped:  getDocumentScraped(),
-		ClientConnections: getActiveClients(),
-	}
-
-	return dashboardDataObj
 }
 
 func main() {
@@ -134,20 +107,8 @@ func main() {
 	// CODE STARTS HERE
 	r := chi.NewRouter()
 
-	type workflows struct {
-		Name   string
-		URL    string
-		Cron   string
-		Prompt string
-	}
-
-	type dashboardData struct {
-		Workflows   []workflows
-		TopCardData topDashData
-	}
-
-	mockWorkflows := dashboardData{
-		Workflows: []workflows{
+	mockWorkflows := dashboard.DashboardData{
+		Workflows: []workflow.Workflows{
 			{
 				Name:   "Workflow 1",
 				URL:    "http://example.com/workflow1",
@@ -173,7 +134,7 @@ func main() {
 				Prompt: "Run the fourth workflow every evening at 6 PM",
 			},
 		},
-		TopCardData: getTopDashData(),
+		TopCardData: dashboard.GetTopDashData(),
 	}
 
 	r.With(auth.RequireAuth).Get("/", func(w http.ResponseWriter, r *http.Request) {
