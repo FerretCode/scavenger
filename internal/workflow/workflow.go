@@ -31,15 +31,15 @@ type Schema struct {
 	Type       string           `json:"type"`
 }
 
-type Workflows struct {
-	Name   string
-	URL    string
-	Cron   string
-	Prompt string
+type Workflow struct {
+	Name       string `json:"name"`
+	ServiceUri string `json:"service_uri"`
+	Prompt     string `json:"prompt"`
+	Cron       string `json:"cron"`
+	Schema     Schema `json:"schema"`
 }
 
 func Create(w http.ResponseWriter, r *http.Request, db *mongo.Client, runClient *run.ServicesClient, ctx *context.Context) error {
-	// TODO: perform database insertion
 	err := r.ParseForm()
 	if err != nil {
 		return err
@@ -48,6 +48,7 @@ func Create(w http.ResponseWriter, r *http.Request, db *mongo.Client, runClient 
 	fmt.Println("All form data:", r.PostForm)
 	fmt.Println("All form data:", r.Form)
 
+	workflowName := r.PostForm.Get("workflowName")
 	website := r.PostForm.Get("websiteInput")
 	cron := r.PostForm.Get("cronInput")
 	prompt := r.PostForm.Get("promptInput")
@@ -105,6 +106,22 @@ func Create(w http.ResponseWriter, r *http.Request, db *mongo.Client, runClient 
 								ContainerPort: 8765, // scraper websocket port
 							},
 						},
+						Resources: &runpb.ResourceRequirements{
+							Limits: map[string]string{
+								"memory": "1.5 Gi",
+							},
+						},
+						StartupProbe: &runpb.Probe{
+							InitialDelaySeconds: 5,
+							PeriodSeconds:       2,
+							FailureThreshold:    1000,
+							ProbeType: &runpb.Probe_HttpGet{
+								HttpGet: &runpb.HTTPGetAction{
+									Path: "/healthz",
+									Port: 8765,
+								},
+							},
+						},
 						Env: []*runpb.EnvVar{
 							{
 								Name: "CRONTAB",
@@ -153,7 +170,17 @@ func Create(w http.ResponseWriter, r *http.Request, db *mongo.Client, runClient 
 		return err
 	}
 
-	fmt.Println(service.Uri)
+	workflow := Workflow{
+		Name:       workflowName,
+		ServiceUri: service.Uri,
+		Prompt:     prompt,
+		Schema:     schema,
+	}
+
+	_, err = db.Database(os.Getenv("DATABASE_NAME")).Collection("workflows").InsertOne(*ctx, workflow)
+	if err != nil {
+		return err
+	}
 
 	return nil
 }
