@@ -2,145 +2,164 @@
 <html lang="en-US" data-theme="dark">
 
 <head>
-  <meta charset="utf-8" name="viewport" content="width=device-width, initial-scale=1">
-  <title>Home</title>
+    <meta charset="utf-8" name="viewport" content="width=device-width, initial-scale=1">
+    <title>Home</title>
 
-  <!-- DaisyUI CSS library -->
-  <link href="https://cdn.jsdelivr.net/npm/daisyui@5" rel="stylesheet" type="text/css" />
+    <!-- DaisyUI CSS library -->
+    <link href="https://cdn.jsdelivr.net/npm/daisyui@5" rel="stylesheet" type="text/css" />
 </head>
 
 <body>
-  <nav class="navbar bg-gray-800 shadow-sm border-b-2 border-black border-solid">
-    <div class="navbar-start"></div>
-    <div class="navbar-center">
-      <h1 class="text-3xl"><b>Scavenger</b></h1>
-    </div>
-    <div class="navbar-end">
-      <a class="btn bg-gray-600 shadow-lg mr-4" href="/auth/logout">
-        Logout
-      </a>
-    </div>
-  </nav>
-
-  <div class="flex">
-    <!-- left sidebar menu takes 1/4 of screen -->
-    <div class="w-1/4 bg-base-200 h-screen p-4">
-      <ul class="menu bg-base-200 rounded-box w-full">
-        <li><button class="menu-item" onclick="showContent('createWorkflow')">Create New Workflow</button></li>
-        <!-- TEMPLATE: insert menu options for each saved workflow -->
-        <li><button class="menu-item" onclick="showContent('example')">Example</button></li>
-      </ul>
-    </div>
-
-    <!-- main content area takes 2/4 of screen -->
-    <div class="w-2/4 p-8" id="contentArea">
-      <!-- default content shown on page load -->
-      <form method="POST" action="/workflow-execute">
-        <input type="hidden" name="numberFields" id="numberFields" value="0">
-        <div>
-          <div>
-            <div class="flex justify-between items-center mb-16">
-              <h2 class="text-2xl font-bold text-yellow-200">Create Your Scraping Workflow</h2>
-
-              <button type="submit" class="btn btn-info text-lg">Submit Workflow</button>
-            </div>
-
-            <div class="flex gap-8">
-              <div class="w-1/2">
-                <div>
-                  <div class="pb-4">
-                    <label for="websiteInput" class="text-xl" id="websiteInputLabel"><b>Website URL</b></label>
-                  </div>
-                  <label class="input validator">
-                    <svg class="h-[1em] opacity-50" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
-                      <g stroke-linejoin="round" stroke-linecap="round" stroke-width="2.5" fill="none" stroke="currentColor">
-                        <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path>
-                        <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path>
-                      </g>
-                    </svg>
-                    <input type="url" name="websiteInput" id="websiteInput" required placeholder="https://" value="https://" pattern="^(https?://)?([a-zA-Z0-9]([a-zA-Z0-9\-].*[a-zA-Z0-9])?\.)+[a-zA-Z].*$" title="Must be valid URL" />
-                  </label>
-                  <p class="validator-hint">Must be valid URL</p>
-                </div>
-
-                <div class="mb-8">
-                  <div class="pb-4">
-                    <label for="cronInput" class="text-xl" id="cronInputLabel"><b>Cron String</b></label>
-                  </div>
-                  <input type="text" class="input" name="cronInput" id="cronInput" placeholder="Type Here" required>
-                </div>
-              </div>
-
-              <div class="mb-8 w-1/2">
-                <div class="pb-4">
-                  <label for="promptInput" class="text-xl" id="promptInputLabel"><b>Scraping Prompt</b></label>
-                </div>
-                <textarea rows="6" cols="50" class="textarea p-2" name="promptInput" id="promptInput" placeholder="Enter your scraping prompt here..."></textarea>
-              </div>
-            </div>
-          </div>
-
-          <div class="mt-8">
-            <div id="fieldAddition">
-              <h3 class="text-xl mb-4 text-yellow-100"><b>Add a JSON Field</b></h3>
-
-              <div class="flex gap-8">
-                <div class="w-1/2">
-                  <div class="mb-4 flex flex-col">
-                    <label for="fieldNameInput" class="text-xl" id="fieldNameInputLabel"><b>Field Name</b></label>
-                    <input type="text" class="input my-4" id="fieldNameInput" placeholder="Type Here" required>
-                    <!-- <textarea rows="4" cols="50" class="p-2" placeholder="Enter your field name here..."></textarea> -->
-                  </div>
-
-                  <div class="flex flex-col">
-                    <label for="fieldTypeInput" class="text-xl" id="fieldTypeInputLabel"><b>Field Type</b></label>
-                    <input type="text" class="input my-4" id="fieldTypeInput" placeholder="ex. int, string, etc." required>
-                    <!-- <textarea rows="4" cols="50" class="p-2" placeholder="Enter your field type here... (ex. int, string, etc.)"></textarea> -->
-                  </div>
-                </div>
-
-                <div class="mb-4 w-1/2 flex flex-col">
-                  <label for="fieldDescInput" class="text-xl" id="fieldDescInputLabel"><b>Field Description</b></label>
-                  <textarea rows="6" cols="150" class="textarea p-2 my-4" id="fieldDescInput" placeholder="Enter your field description here..."></textarea>
-                </div>
-              </div>
-
-              <button type="button" class="btn btn-success ml-1 mb-4 mt-4 text-lg" onclick="fieldAdd()">Add Field</button>
-            </div>
-          </div>
+    <nav class="navbar bg-gray-800 shadow-sm border-b-2 border-black border-solid">
+        <div class="navbar-start"></div>
+        <div class="navbar-center">
+            <h1 class="text-3xl"><b>Scavenger</b></h1>
         </div>
-      </form>
+        <div class="navbar-end">
+            <a class="btn bg-gray-600 shadow-lg mr-4" href="/auth/logout">
+                Logout
+            </a>
+        </div>
+    </nav>
+
+    <div class="flex">
+        <!-- left sidebar menu takes 1/4 of screen -->
+        <div class="w-1/4 bg-base-200 h-screen p-4">
+            <ul class="menu bg-base-200 rounded-box w-full">
+                <li><button class="menu-item" onclick="showContent('createWorkflow')">Create New Workflow</button></li>
+                <!-- TEMPLATE: insert menu options for each saved workflow -->
+                <li><button class="menu-item" onclick="showContent('example')">Example</button></li>
+            </ul>
+        </div>
+
+        <!-- main content area takes 2/4 of screen -->
+        <div class="w-2/4 p-8" id="contentArea">
+            <!-- default content shown on page load -->
+            <form method="POST" action="/workflow-execute">
+                <input type="hidden" name="numberFields" id="numberFields" value="0">
+                <div>
+                    <div>
+                        <div class="flex justify-between items-center mb-16">
+                            <h2 class="text-2xl font-bold text-yellow-200">Create Your Scraping Workflow</h2>
+
+                            <button type="submit" class="btn btn-info text-lg">Submit Workflow</button>
+                        </div>
+
+                        <div class="flex gap-8">
+                            <div class="w-1/2">
+                                <div>
+                                    <div class="pb-4">
+                                        <label for="websiteInput" class="text-xl" id="websiteInputLabel"><b>Website
+                                                URL</b></label>
+                                    </div>
+                                    <label class="input validator">
+                                        <svg class="h-[1em] opacity-50" xmlns="http://www.w3.org/2000/svg"
+                                            viewBox="0 0 24 24">
+                                            <g stroke-linejoin="round" stroke-linecap="round" stroke-width="2.5"
+                                                fill="none" stroke="currentColor">
+                                                <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71">
+                                                </path>
+                                                <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71">
+                                                </path>
+                                            </g>
+                                        </svg>
+                                        <input type="url" name="websiteInput" id="websiteInput" required
+                                            placeholder="https://" value="https://"
+                                            pattern="^(https?://)?([a-zA-Z0-9]([a-zA-Z0-9\-].*[a-zA-Z0-9])?\.)+[a-zA-Z].*$"
+                                            title="Must be valid URL" />
+                                    </label>
+                                    <p class="validator-hint">Must be valid URL</p>
+                                </div>
+
+                                <div class="mb-8">
+                                    <div class="pb-4">
+                                        <label for="cronInput" class="text-xl" id="cronInputLabel"><b>Cron
+                                                String</b></label>
+                                    </div>
+                                    <input type="text" class="input" name="cronInput" id="cronInput"
+                                        placeholder="Type Here" required>
+                                </div>
+                            </div>
+
+                            <div class="mb-8 w-1/2">
+                                <div class="pb-4">
+                                    <label for="promptInput" class="text-xl" id="promptInputLabel"><b>Scraping
+                                            Prompt</b></label>
+                                </div>
+                                <textarea rows="6" cols="50" class="textarea p-2" name="promptInput" id="promptInput"
+                                    placeholder="Enter your scraping prompt here..."></textarea>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="mt-8">
+                        <div id="fieldAddition">
+                            <h3 class="text-xl mb-4 text-yellow-100"><b>Add a JSON Field</b></h3>
+
+                            <div class="flex gap-8">
+                                <div class="w-1/2">
+                                    <div class="mb-4 flex flex-col">
+                                        <label for="fieldNameInput" class="text-xl" id="fieldNameInputLabel"><b>Field
+                                                Name</b></label>
+                                        <input type="text" class="input my-4" id="fieldNameInput"
+                                            placeholder="Type Here" required>
+                                        <!-- <textarea rows="4" cols="50" class="p-2" placeholder="Enter your field name here..."></textarea> -->
+                                    </div>
+
+                                    <div class="flex flex-col">
+                                        <label for="fieldTypeInput" class="text-xl" id="fieldTypeInputLabel"><b>Field
+                                                Type</b></label>
+                                        <input type="text" class="input my-4" id="fieldTypeInput"
+                                            placeholder="ex. int, string, etc." required>
+                                        <!-- <textarea rows="4" cols="50" class="p-2" placeholder="Enter your field type here... (ex. int, string, etc.)"></textarea> -->
+                                    </div>
+                                </div>
+
+                                <div class="mb-4 w-1/2 flex flex-col">
+                                    <label for="fieldDescInput" class="text-xl" id="fieldDescInputLabel"><b>Field
+                                            Description</b></label>
+                                    <textarea rows="6" cols="150" class="textarea p-2 my-4" id="fieldDescInput"
+                                        placeholder="Enter your field description here..."></textarea>
+                                </div>
+                            </div>
+
+                            <button type="button" class="btn btn-success ml-1 mb-4 mt-4 text-lg"
+                                onclick="fieldAdd()">Add Field</button>
+                        </div>
+                    </div>
+                </div>
+            </form>
+        </div>
+
+        <!-- right sidebar menu takes 1/4 of screen -->
+        <div class="w-1/4 bg-base-200 h-screen p-4 overflow-y-auto p-8" id="fieldCardSection"></div>
     </div>
 
-    <!-- right sidebar menu takes 1/4 of screen -->
-    <div class="w-1/4 bg-base-200 h-screen p-4 overflow-y-auto p-8" id="fieldCardSection"></div>
-  </div>
+    <!-- script to create a new form for adding a JSON field -->
+    <script>
+        var numberFields = 0;
 
-  <!-- script to create a new form for adding a JSON field -->
-  <script>
-    var numberFields = 0;
+        function fieldRemove(id) {
+            const el = document.getElementById(id);
+            if (el) {
+                el.remove();
+            }
+        }
 
-    function fieldRemove(id) {
-      const el = document.getElementById(id);
-      if (el) {
-        el.remove();
-      }
-    }
+        function fieldAdd() {
+            const fieldName = document.getElementById('fieldNameInput').value;
+            const fieldType = document.getElementById('fieldTypeInput').value;
+            const fieldDesc = document.getElementById('fieldDescInput').value;
 
-    function fieldAdd() {
-      const fieldName = document.getElementById('fieldNameInput').value;
-      const fieldType = document.getElementById('fieldTypeInput').value;
-      const fieldDesc = document.getElementById('fieldDescInput').value;
+            if (fieldName == "" || fieldType == "" || fieldDesc == "") {
+                alert("missing field information");
+                return;
+            }
 
-      if (fieldName == "" || fieldType == "" || fieldDesc == "") {
-        alert("missing field information");
-        return;
-      }
-
-      const fieldSection = document.getElementById('fieldCardSection');
-      const card = document.createElement('div');
-      card.id = `field_${numberFields}`
-      card.innerHTML = `
+            const fieldSection = document.getElementById('fieldCardSection');
+            const card = document.createElement('div');
+            card.id = `field_${numberFields}`
+            card.innerHTML = `
             <div class="menu bg-base-200 rounded-box w-full fieldCard">
               <div class="bg-gray-800 p-4">
                 <span class="flex mb-4 border-b-2 border-solid border-black p-2">
@@ -172,37 +191,37 @@
             </div>
         </div>
       `
-      fieldSection.appendChild(card);
+            fieldSection.appendChild(card);
 
-      // Ckear field values
-      document.getElementById('fieldNameInput').value = "";
-      document.getElementById('fieldTypeInput').value = "";
-      document.getElementById('fieldDescInput').value = "";
+            // Ckear field values
+            document.getElementById('fieldNameInput').value = "";
+            document.getElementById('fieldTypeInput').value = "";
+            document.getElementById('fieldDescInput').value = "";
 
-      document.getElementById("numberFields").value = numberFields;
-      numberFields++;
-    }
-  </script>
+            document.getElementById("numberFields").value = numberFields;
+            numberFields++;
+        }
+    </script>
 
-  <!-- script to change the content shown in the content box -->
-  <script>
-    // Function to display dynamic content based on the selected menu item
-    function showContent(workflowName) {
-      const contentArea = document.getElementById('contentArea');
+    <!-- script to change the content shown in the content box -->
+    <script>
+        // Function to display dynamic content based on the selected menu item
+        function showContent(workflowName) {
+            const contentArea = document.getElementById('contentArea');
 
-      let elemsObj = {
-        websiteElem: document.getElementById('websiteInput'),
-        cronElem: document.getElementById('cronInput'),
-        promptElem: document.getElementById('promptInput'),
-        fieldNameElem: document.getElementById('fieldNameInput'),
-        fieldTypeInput: document.getElementById('fieldTypeInput'),
-        fieldDescInput: document.getElementById('fieldDescInput')
-      }
-    }
-  </script>
+            let elemsObj = {
+                websiteElem: document.getElementById('websiteInput'),
+                cronElem: document.getElementById('cronInput'),
+                promptElem: document.getElementById('promptInput'),
+                fieldNameElem: document.getElementById('fieldNameInput'),
+                fieldTypeInput: document.getElementById('fieldTypeInput'),
+                fieldDescInput: document.getElementById('fieldDescInput')
+            }
+        }
+    </script>
 
-  <!-- bring in the tailwind stuff -->
-  <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+    <!-- bring in the tailwind stuff -->
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
 
 </body>
 

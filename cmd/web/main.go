@@ -11,12 +11,16 @@ import (
 	"os"
 	"time"
 
+	"cloud.google.com/go/run/apiv2"
+	secretmanager "cloud.google.com/go/secretmanager/apiv1"
 	"github.com/ferretcode/scavenger/internal/auth"
+	"github.com/ferretcode/scavenger/internal/workflow"
 	"github.com/go-chi/chi/v5"
 	"github.com/joho/godotenv"
 	"go.mongodb.org/mongo-driver/v2/mongo"
 	"go.mongodb.org/mongo-driver/v2/mongo/options"
 	"go.mongodb.org/mongo-driver/v2/mongo/readpref"
+	"google.golang.org/api/option"
 )
 
 var templates *template.Template
@@ -42,6 +46,8 @@ func main() {
 	logger = slog.New(slog.NewTextHandler(os.Stdout, nil))
 	slog.SetDefault(logger)
 
+	ctx := context.Background()
+
 	err := godotenv.Load()
 	if err != nil {
 		logger.Error("error parsing .env", "err", err)
@@ -60,13 +66,33 @@ func main() {
 		return
 	}
 
-	// Connect to MongoDB
-	client, err := mongo.Connect(options.Client().ApplyURI(dsn))
+	if _, err = os.Stat("./credentials.json"); err != nil {
+		logger.Error("error parsing credentials file", "err", err)
+		return
+	}
+
+	secretManagerClient, err := secretmanager.NewClient(ctx, option.WithCredentialsFile("./credentials.json"))
 	if err != nil {
-		log.Fatal(err)
+		logger.Error("error using credentials file", "err", err)
+		return
+	}
+	defer secretManagerClient.Close()
+	_ = secretManagerClient
+
+	runClient, err := run.NewServicesClient(ctx, option.WithCredentialsFile("./credentials.json"))
+	if err != nil {
+		logger.Error("error creating google run client", "err", err)
+		return
+	}
+
+	// Connect to MongoDB
+	db, err := mongo.Connect(options.Client().ApplyURI(dsn))
+	if err != nil {
+		logger.Error("error connecting to mongodb database", "err", err)
+		return
 	}
 	defer func() {
-		if err = client.Disconnect(context.Background()); err != nil {
+		if err = db.Disconnect(context.Background()); err != nil {
 			panic(err)
 		}
 	}()
@@ -74,7 +100,7 @@ func main() {
 	// Ping the database
 	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
 	defer cancel()
-	_ = client.Ping(ctx, readpref.Primary())
+	_ = db.Ping(ctx, readpref.Primary())
 
 	r := chi.NewRouter()
 
@@ -85,7 +111,7 @@ func main() {
 
 	r.Route("/workflow", func(r chi.Router) {
 		r.Post("/create", func(w http.ResponseWriter, r *http.Request) {
-
+			handleError(workflow.Create(w, r, db, runClient, &ctx), w, "workflow/create")
 		})
 	})
 
@@ -106,7 +132,8 @@ func main() {
 	log.Println("Running web server http://localhost:3000")
 	err = http.ListenAndServe(":3000", r)
 	if err != nil {
-		log.Fatal(err)
+		logger.Error("error serving http server", "error", err)
+		return
 	}
 }
 
