@@ -31,6 +31,13 @@ type Schema struct {
 	Type       string           `json:"type"`
 }
 
+type Workflows struct {
+	Name   string
+	URL    string
+	Cron   string
+	Prompt string
+}
+
 func Create(w http.ResponseWriter, r *http.Request, db *mongo.Client, runClient *run.ServicesClient, ctx *context.Context) error {
 	// TODO: perform database insertion
 	err := r.ParseForm()
@@ -175,4 +182,16 @@ func generateServiceID() string {
 	}
 
 	return sb.String()
+}
+
+func GetRunningWorkflows() (int, error) {
+	return 1, nil
+}
+
+func GetDocumentScraped() (int, error) {
+	return 2, nil
+}
+
+func GetActiveClients() (int, error) {
+	return 3, nil
 }
