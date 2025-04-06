@@ -11,7 +11,7 @@ type TopDashData struct {
 }
 
 type DashboardData struct {
-	Workflows   []workflow.Workflows
+	Workflows   []workflow.Workflow
 	TopCardData TopDashData
 }
 
