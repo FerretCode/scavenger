@@ -81,9 +81,6 @@ func Logout(w http.ResponseWriter, r *http.Request) error {
 		sessionsMu.Lock()
 		delete(sessions, cookie.Value)
 		sessionsMu.Unlock()
-		return nil
-	} else {
-		return err
 	}
 
 	http.SetCookie(w, &http.Cookie{
@@ -93,7 +90,7 @@ func Logout(w http.ResponseWriter, r *http.Request) error {
 		MaxAge: -1,
 	})
 
-	http.Redirect(w, r, "/auth/login", http.StatusSeeOther)
+	http.Redirect(w, r, "/", http.StatusSeeOther)
 
 	return nil
 }
