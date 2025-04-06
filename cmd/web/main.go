@@ -209,11 +209,15 @@ func main() {
 				},
 			},
 		},
-		TopCardData: dashboard.GetTopDashData(),
+		TopCardData: dashboard.TopDashData{
+			RunningWorkflows:  1,
+			DocumentsScraped:  2,
+			ClientConnections: 3,
+		},
 	}
 
 	r.With(auth.RequireAuth).Get("/", func(w http.ResponseWriter, r *http.Request) {
-		handleError(dashboard.GetTopDashData(runClient, ctx))
+		mockWorkflows.TopCardData = dashboard.GetTopDashData(runClient, ctx)
 		handleError(templates.ExecuteTemplate(w, "dashboard.html", mockWorkflows), w, "dashboard/render")
 	})
 

@@ -18,7 +18,7 @@ type DashboardData struct {
 	TopCardData TopDashData
 }
 
-func GetTopDashData(runClient run.ServicesClient, ctx context.Context) TopDashData {
+func GetTopDashData(runClient *run.ServicesClient, ctx context.Context) TopDashData {
 	running, err := workflow.GetRunningWorkflows(runClient, ctx)
 	if err != nil {
 		running = 0 // or handle error

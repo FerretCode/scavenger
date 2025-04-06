@@ -14,6 +14,7 @@ import (
 	run "cloud.google.com/go/run/apiv2"
 	"cloud.google.com/go/run/apiv2/runpb"
 	"go.mongodb.org/mongo-driver/v2/mongo"
+	"google.golang.org/api/iterator"
 )
 
 const serviceIDCharset = "abcdefghijklmnopqrstuvwxyz0123456789"
@@ -237,7 +238,9 @@ func generateServiceID() string {
 	return sb.String()
 }
 
-func GetRunningWorkflows(runClient run.ServicesClient, ctx context.Context) (int, error) {
+func GetRunningWorkflows(runClient *run.ServicesClient, ctx context.Context) (int, error) {
+
+	fmt.Println("GOT HERE FIRST")
 
 	parent := fmt.Sprintf("projects/%s/locations/%s", os.Getenv("GCP_PROJECT_ID"), os.Getenv("GCP_LOCATION"))
 
@@ -249,17 +252,31 @@ func GetRunningWorkflows(runClient run.ServicesClient, ctx context.Context) (int
 	}
 	req.Header.Set("Content-Type", "application/json")
 
-	client := &http.Client{}
-	resp, err := client.Do(req)
-	if err != nil {
-		return 0, err
+	fmt.Println("GOT HERE SECOND")
+
+	requestRunPB := &runpb.ListServicesRequest{
+		Parent: parent,
 	}
 
+	resp := runClient.ListServices(ctx, requestRunPB)
+	done := false
+	totalContainers := 0
+
+	for !done {
+		if _, err := resp.Next(); err != iterator.Done {
+			totalContainers++
+		} else {
+			done = true
+		}
+	}
+
+	fmt.Println("GOT HERE THIRD")
+
 	fmt.Println("INTERESTING")
-	fmt.Println(resp)
+
 	fmt.Println("AFTER RESP")
 
-	return 1, nil
+	return totalContainers, nil
 }
 
 func GetDocumentScraped() (int, error) {
