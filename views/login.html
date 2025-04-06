@@ -11,14 +11,16 @@
         <div class="bg-gray-800 rounded-box shadow-lg p-12">
             <form method="POST" action="/auth/login">
                 <div class="flex flex-col gap-8">
-                    <div>
-                        <label class="mr-2">Username:</label>
-                        <input type="text" name="username">
-                    </div>
-                    <div>
-                        <label class="mr-2">Password:</label>
-                        <input type="password" name="password">
-                    </div>
+                    <label class="input">
+                        Username:
+                        <input type="text" name="username" required>
+                    </label>
+                        
+                    <label class="input">
+                        Password:
+                        <input type="password" name="password" required>
+                    </label>
+
                     <button type="submit" class="btn bg-gray-600 px-8 py-2 shadow-sm rounded hover:cursor-pointer">
                         Login
                     </button>
