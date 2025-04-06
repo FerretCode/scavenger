@@ -109,109 +109,33 @@ func main() {
 	defer cancel()
 	_ = db.Ping(pingCtx, readpref.Primary())
 
+	// Retrieve all the workflows
+	cur, err := db.Database("scavenger").Collection("workflows").Find(ctx, bson.D{{}})
+	if err != nil {
+		logger.Error("error retrieving workflows", "err", err)
+		return
+	}
+	defer cur.Close(context.Background())
+
+	var workflows []workflow.Workflow
+	for cur.Next(context.Background()) {
+		var workflow workflow.Workflow
+		if err := cur.Decode(&workflow); err != nil {
+			log.Fatal(err)
+		}
+		workflows = append(workflows, workflow)
+	}
+
+	if err := cur.Err(); err != nil {
+		logger.Error("error parsing workflows", "err", err)
+		return
+	}
+
 	// CODE STARTS HERE
 	r := chi.NewRouter()
 
 	mockWorkflows := dashboard.DashboardData{
-		Workflows: []workflow.Workflow{
-			{
-				Name:       "Workflow 1",
-				ServiceUri: "http://example.com/workflow1",
-				Cron:       "0 0 * * *",
-				Prompt:     "Run the first workflow every midnight",
-				Schema: workflow.Schema{
-					Title: "Workflow 1 Schema",
-					Type:  "object",
-					Properties: map[string]workflow.Field{
-						"field1": {
-							Name: "Field 1",
-							Type: "string",
-							Desc: "The first field for Workflow 1",
-						},
-						"field2": {
-							Name: "Field 2",
-							Type: "integer",
-							Desc: "The second field for Workflow 1",
-						},
-					},
-					Required: []string{"field1"},
-				},
-			},
-			{
-				Name:       "Workflow 2",
-				ServiceUri: "http://example.com/workflow2",
-				Cron:       "0 6 * * *",
-				Prompt:     "Run the second workflow every morning at 6 AM",
-				Schema: workflow.Schema{
-					Title: "Workflow 2 Schema",
-					Type:  "object",
-					Properties: map[string]workflow.Field{
-						"field1": {
-							Name: "Field 1",
-							Type: "string",
-							Desc: "The first field for Workflow 2",
-						},
-						"field2": {
-							Name: "Field 2",
-							Type: "boolean",
-							Desc: "The second field for Workflow 2",
-						},
-					},
-					Required: []string{"field1", "field2"},
-				},
-			},
-			{
-				Name:       "Workflow 3",
-				ServiceUri: "http://example.com/workflow3",
-				Cron:       "0 12 * * *",
-				Prompt:     "Run the third workflow every day at noon",
-				Schema: workflow.Schema{
-					Title: "Workflow 3 Schema",
-					Type:  "object",
-					Properties: map[string]workflow.Field{
-						"field1": {
-							Name: "Field 1",
-							Type: "string",
-							Desc: "The first field for Workflow 3",
-						},
-						"field2": {
-							Name: "Field 2",
-							Type: "float",
-							Desc: "The second field for Workflow 3",
-						},
-					},
-					Required: []string{"field1"},
-				},
-			},
-			{
-				Name:       "Workflow 4",
-				ServiceUri: "http://example.com/workflow4",
-				Cron:       "0 18 * * *",
-				Prompt:     "Run the fourth workflow every evening at 6 PM",
-				Schema: workflow.Schema{
-					Title: "Workflow 4 Schema",
-					Type:  "object",
-					Properties: map[string]workflow.Field{
-						"field1": {
-							Name: "Field 1",
-							Type: "string",
-							Desc: "The first field for Workflow 4",
-						},
-						"field2": {
-							Name: "Field 2",
-							Type: "integer",
-							Desc: "The second field for Workflow 4",
-						},
-						"field3": {
-							Name: "Field 3",
-							Type: "boolean",
-							Desc: "The third field for Workflow 4",
-						},
-					},
-					Required: []string{"field1", "field2"},
-				},
-			},
-		},
+		Workflows:   workflows,
 		TopCardData: dashboard.GetTopDashData(),
 	}
 
@@ -228,6 +152,10 @@ func main() {
 
 		r.Post("/create", func(w http.ResponseWriter, r *http.Request) {
 			handleError(workflow.Create(w, r, db, runClient, ctx), w, "workflow/create")
+		})
+
+		r.Get("/watch/{workflow_name}", func(w http.ResponseWriter, r *http.Request) {
+
 		})
 	})
 
