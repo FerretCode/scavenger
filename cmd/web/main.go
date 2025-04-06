@@ -9,9 +9,6 @@ import (
 	"net/http/httputil"
 	"net/url"
 	"os"
-	"structs"
-	"sync"
-	"text/template"
 	"time"
 
 	run "cloud.google.com/go/run/apiv2"
