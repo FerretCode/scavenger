@@ -173,7 +173,7 @@ func Create(w http.ResponseWriter, r *http.Request, db *mongo.Client, runClient 
 
 	resource := fmt.Sprintf("projects/%s/locations/%s/services/%s", os.Getenv("GCP_PROJECT_ID"), os.Getenv("GCP_LOCATION"), createServiceRequest.ServiceId)
 
-	policy, err := runClient.GetIamPolicy(*ctx, &iampb.GetIamPolicyRequest{
+	policy, err := runClient.GetIamPolicy(ctx, &iampb.GetIamPolicyRequest{
 		Resource: resource,
 	})
 	if err != nil {
@@ -185,7 +185,7 @@ func Create(w http.ResponseWriter, r *http.Request, db *mongo.Client, runClient 
 		Members: []string{"allUsers"},
 	})
 
-	_, err = runClient.SetIamPolicy(*ctx, &iampb.SetIamPolicyRequest{
+	_, err = runClient.SetIamPolicy(ctx, &iampb.SetIamPolicyRequest{
 		Resource: resource,
 		Policy:   policy,
 	})

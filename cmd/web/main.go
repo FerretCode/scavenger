@@ -226,9 +226,7 @@ func main() {
 		})
 	})
 
-	r.Get("/connect/{workflow_name}", func(w http.ResponseWriter, r *http.Request) {
-		// TODO: use API key middleware
-
+	r.With(auth.RequireAPIKey(ctx, db, logger)).Get("/connect/{workflow_name}", func(w http.ResponseWriter, r *http.Request) {
 		workflowName := chi.URLParam(r, "workflow_name")
 		filter := bson.D{{"name", workflowName}}
 		res := db.Database("scavenger").Collection("workflows").FindOne(ctx, filter)
