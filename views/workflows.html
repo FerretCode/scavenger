@@ -268,9 +268,12 @@
         fieldTypeInput: document.getElementById('fieldTypeInput'),
         fieldDescInput: document.getElementById('fieldDescInput')
       }
-
-      elemsObj.nameElem.value = `${workflowName}`
-      elemsObj.websiteElem = ""
+      {{range .Workflows}}
+      if (workflowName == "{{ .Name }}") {
+        elemsObj.nameElem.value = `${workflowName}`
+        elemsObj.websiteElem = "{{ .URL }} "
+      }
+      {{end}}
 
     }
   </script>
