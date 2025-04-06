@@ -260,13 +260,23 @@
       var numberFields = 0;
       const fieldSection = document.getElementById('fieldCardSection');
       fieldSection.innerHTML = "";
-
       let elemsObj = {
         nameElem: document.getElementById('nameInput'),
         websiteElem: document.getElementById('websiteInput'),
         cronElem: document.getElementById('cronInput'),
         promptElem: document.getElementById('promptInput'),
       }
+
+      // check if the button selected was the create new workflow button
+      if (workflowName == "createWorkflow") {
+        elemsObj.nameElem.value = ""
+        elemsObj.websiteElem.value = ""
+        elemsObj.cronElem.value = ""
+        elemsObj.promptElem.value = ""
+        return
+      }
+
+      // if button selected was valid workflow, populate form and make cards
       {{range .Workflows}}
       if (workflowName == "{{ .Name }}") {
         elemsObj.nameElem.value = `${workflowName}`
