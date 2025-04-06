@@ -24,20 +24,10 @@ func GetTopDashData(runClient *run.ServicesClient, ctx context.Context) TopDashD
 		running = 0 // or handle error
 	}
 
-	documents, err := workflow.GetDocumentScraped()
-	if err != nil {
-		documents = 0
-	}
-
-	clients, err := workflow.GetActiveClients()
-	if err != nil {
-		clients = 0
-	}
-
 	dashboardDataObj := TopDashData{
 		RunningWorkflows:  running,
-		DocumentsScraped:  documents,
-		ClientConnections: clients,
+		DocumentsScraped:  0,
+		ClientConnections: 0,
 	}
 
 	return dashboardDataObj
