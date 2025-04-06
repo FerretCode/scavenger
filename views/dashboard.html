@@ -23,7 +23,7 @@
         </div>
         <ul tabindex="0" class="menu menu-sm dropdown-content bg-base-100 rounded-box z-1 mt-3 w-52 p-2 shadow">
           <li><a href="/">Dashboard</a></li>
-          <li><a href="/workflows">workflows</a></li>
+          <li><a href="/workflows">Workflows</a></li>
         </ul>
       </div>
     </div>
@@ -37,42 +37,82 @@
     </div>
   </nav>
 
-  <!-- create the list of cards -->
+  <!-- create info cards at the top of dashboard -->
   <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 p-4">
-    {{range .Workflows}}
     <div class="bg-base-200 rounded-box workflowCard">
       <div class="bg-gray-800 p-4">
         <span class="flex mb-4 border-b-2 border-solid border-black p-2 gap-4">
-          <h3 class="text-lg w-1/2"><b>Workflow Name</b></h3>
+          <h3 class="text-lg w-1/2"><b>Number of Running Workflows</b></h3>
           <p class="w-1/2 break-words">
-            {{ .Name }}
-          </p>
-        </span>
-        <span class="flex mb-4 border-b-2 border-solid border-black p-2 gap-4">
-          <h3 class="text-lg w-1/2"><b>Website URL</b></h3>
-          <p class="w-1/2 break-words">
-            {{ .URL }}
-          </p>
-        </span>
-        <span class="flex mb-4 border-b-2 border-solid border-black p-2 gap-4">
-          <h3 class="text-lg w-1/2"><b>Cron</b></h3>
-          <p class="w-1/2 break-words">
-            {{ .Cron }}
-          </p>
-        </span>
-        <span class="flex p-2">
-          <h3 class="text-lg w-1/2 gap-4"><b>Scraping Prompt</b></h3>
-          <p class="w-1/2 break-words">
-            {{ .Prompt }}
+            {{ .TopCardData.RunningWorkflows }}
           </p>
         </span>
       </div>
     </div>
-    {{end}}
+    <div class="bg-base-200 rounded-box workflowCard">
+      <div class="bg-gray-800 p-4">
+        <span class="flex mb-4 border-b-2 border-solid border-black p-2 gap-4">
+          <h3 class="text-lg w-1/2"><b>Total Documents Scraped</b></h3>
+          <p class="w-1/2 break-words">
+            {{ .TopCardData.DocumentsScraped }}
+          </p>
+        </span>
+      </div>
+    </div>
+    <div class="bg-base-200 rounded-box workflowCard">
+      <div class="bg-gray-800 p-4">
+        <span class="flex mb-4 border-b-2 border-solid border-black p-2 gap-4">
+          <h3 class="text-lg w-1/2"><b>Active Client Connections</b></h3>
+          <p class="w-1/2 break-words">
+            {{ .TopCardData.ClientConnections }}
+          </p>
+        </span>
+      </div>
+    </div>
   </div>
 
-  <!-- bring in the tailwind stuff -->
-  <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+  <!-- create the list of cards -->
+  {{if not .Workflows}}
+  <p class="text-center text-md mt-4">
+    <b>No Running Workflows</b>
+  </p>
+  {{else}}
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 p-4">
+      {{range .Workflows}}
+      <div class="bg-base-200 rounded-box workflowCard">
+        <div class="bg-gray-800 p-4">
+          <span class="flex mb-4 border-b-2 border-solid border-black p-2 gap-4">
+            <h3 class="text-lg w-1/2"><b>Workflow Name</b></h3>
+            <p class="w-1/2 break-words">
+              {{ .Name }}
+            </p>
+          </span>
+          <span class="flex mb-4 border-b-2 border-solid border-black p-2 gap-4">
+            <h3 class="text-lg w-1/2"><b>Website URL</b></h3>
+            <p class="w-1/2 break-words">
+              {{ .URL }}
+            </p>
+          </span>
+          <span class="flex mb-4 border-b-2 border-solid border-black p-2 gap-4">
+            <h3 class="text-lg w-1/2"><b>Cron</b></h3>
+            <p class="w-1/2 break-words">
+              {{ .Cron }}
+            </p>
+          </span>
+          <span class="flex p-2">
+            <h3 class="text-lg w-1/2 gap-4"><b>Scraping Prompt</b></h3>
+            <p class="w-1/2 break-words">
+              {{ .Prompt }}
+            </p>
+          </span>
+        </div>
+      </div>
+      {{end}}
+    </div>
+    {{end}}
+
+    <!-- bring in the tailwind stuff -->
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
 
 </body>
 

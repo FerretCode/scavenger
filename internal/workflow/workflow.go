@@ -35,6 +35,7 @@ type Workflow struct {
 	Name       string `json:"name"`
 	ServiceUri string `json:"service_uri"`
 	Prompt     string `json:"prompt"`
+	Cron       string `json:"cron"`
 	Schema     Schema `json:"schema"`
 }
 
@@ -208,4 +209,16 @@ func generateServiceID() string {
 	}
 
 	return sb.String()
+}
+
+func GetRunningWorkflows() (int, error) {
+	return 1, nil
+}
+
+func GetDocumentScraped() (int, error) {
+	return 2, nil
+}
+
+func GetActiveClients() (int, error) {
+	return 3, nil
 }

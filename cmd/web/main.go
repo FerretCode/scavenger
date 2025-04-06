@@ -14,6 +14,7 @@ import (
 	run "cloud.google.com/go/run/apiv2"
 	secretmanager "cloud.google.com/go/secretmanager/apiv1"
 	"github.com/ferretcode/scavenger/internal/auth"
+	"github.com/ferretcode/scavenger/internal/dashboard"
 	"github.com/ferretcode/scavenger/internal/workflow"
 	"github.com/go-chi/chi/v5"
 	"github.com/joho/godotenv"
@@ -106,19 +107,8 @@ func main() {
 	// CODE STARTS HERE
 	r := chi.NewRouter()
 
-	type workflows struct {
-		Name   string
-		URL    string
-		Cron   string
-		Prompt string
-	}
-
-	type dashboardData struct {
-		Workflows []workflows
-	}
-
-	mockWorkflows := dashboardData{
-		Workflows: []workflows{
+	mockWorkflows := dashboard.DashboardData{
+		Workflows: []workflow.Workflows{
 			{
 				Name:   "Workflow 1",
 				URL:    "http://example.com/workflow1",
@@ -144,6 +134,7 @@ func main() {
 				Prompt: "Run the fourth workflow every evening at 6 PM",
 			},
 		},
+		TopCardData: dashboard.GetTopDashData(),
 	}
 
 	r.With(auth.RequireAuth).Get("/", func(w http.ResponseWriter, r *http.Request) {
