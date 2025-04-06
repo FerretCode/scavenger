@@ -18,6 +18,7 @@ import (
 	"github.com/ferretcode/scavenger/internal/workflow"
 	"github.com/go-chi/chi/v5"
 	"github.com/joho/godotenv"
+	"go.mongodb.org/mongo-driver/v2/bson"
 	"go.mongodb.org/mongo-driver/v2/mongo"
 	"go.mongodb.org/mongo-driver/v2/mongo/options"
 	"go.mongodb.org/mongo-driver/v2/mongo/readpref"
@@ -34,6 +35,7 @@ func parseTemplates() error {
 		"./views/dashboard.html",
 		"./views/workflows.html",
 		"./views/login.html",
+		"./views/api.html",
 	}
 
 	templates, err = template.ParseFiles(files...)
@@ -216,13 +218,41 @@ func main() {
 	})
 
 	r.Route("/workflows", func(r chi.Router) {
-		r.With(auth.RequireAuth).Get("/", func(w http.ResponseWriter, r *http.Request) {
+		r.Use(auth.RequireAuth)
+
+		r.Get("/", func(w http.ResponseWriter, r *http.Request) {
 			handleError(templates.ExecuteTemplate(w, "workflows.html", mockWorkflows), w, "workflows/render")
 		})
 
 		r.Post("/create", func(w http.ResponseWriter, r *http.Request) {
-			handleError(workflow.Create(w, r, db, runClient, &ctx), w, "workflow/create")
+			handleError(workflow.Create(w, r, db, runClient, ctx), w, "workflow/create")
 		})
+	})
+
+	r.With(auth.RequireAPIKey(ctx, db, logger)).Get("/connect/{workflow_name}", func(w http.ResponseWriter, r *http.Request) {
+		workflowName := chi.URLParam(r, "workflow_name")
+		filter := bson.D{{"name", workflowName}}
+		res := db.Database("scavenger").Collection("workflows").FindOne(ctx, filter)
+		workflow := workflow.Workflow{}
+
+		if res.Err() != nil {
+			handleError(res.Err(), w, "connect")
+			return
+		}
+
+		err := res.Decode(&workflow)
+		if err != nil {
+			handleError(err, w, "connect")
+			return
+		}
+
+		proxy, err := proxyToUri(workflow.ServiceUri)
+		if err != nil {
+			handleError(err, w, "connect")
+			return
+		}
+
+		proxy.ServeHTTP(w, r)
 	})
 
 	r.Route("/auth", func(r chi.Router) {
@@ -236,6 +266,18 @@ func main() {
 
 		r.Get("/logout", func(w http.ResponseWriter, r *http.Request) {
 			handleError(auth.Logout(w, r), w, "logout")
+		})
+
+		r.Route("/api", func(r chi.Router) {
+			r.Use(auth.RequireAuth)
+
+			r.Get("/", func(w http.ResponseWriter, r *http.Request) {
+				handleError(auth.RenderAPIKey(w, r, templates, nil), w, "api/render")
+			})
+
+			r.Post("/", func(w http.ResponseWriter, r *http.Request) {
+				handleError(auth.CreateAPIKey(w, r, db, templates, ctx), w, "api")
+			})
 		})
 	})
 
@@ -256,16 +298,10 @@ func handleError(err error, w http.ResponseWriter, svc string) {
 
 // taking the host req
 // creatign a reverse proxy using httputil
-func connectingHostToUser(hostString string) (*httputil.ReverseProxy, error) {
+func proxyToUri(hostString string) (*httputil.ReverseProxy, error) {
 	url, err := url.Parse(hostString)
 	if err != nil {
 		return nil, err
 	}
 	return httputil.NewSingleHostReverseProxy(url), nil
-}
-
-func proxyRequestHandler(proxy *httputil.ReverseProxy) func(http.ResponseWriter, *http.Request) {
-	return func(w http.ResponseWriter, r *http.Request) {
-		proxy.ServeHTTP(w, r)
-	}
 }

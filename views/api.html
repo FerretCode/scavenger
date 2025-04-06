@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="en-US" data-theme="dark">
+<head>
+    <title>API Key</title>
+    <link href="https://cdn.jsdelivr.net/npm/daisyui@5" rel="stylesheet" type="text/css" />
+    <link href="https://cdn.jsdelivr.net/npm/daisyui@5/themes.css" rel="stylesheet" type="text/css" />
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+</head>
+<body>
+    <nav class="navbar bg-gray-800 shadow-sm border-b-2 border-black border-solid">
+        <div class="navbar-start">
+          <div class="dropdown">
+            <div tabindex="0" role="button" class="btn btn-ghost btn-circle">
+              <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h7" />
+              </svg>
+            </div>
+            <ul tabindex="0" class="menu menu-sm dropdown-content bg-base-100 rounded-box z-1 mt-3 w-52 p-2 shadow">
+              <li><a href="/">Dashboard</a></li>
+              <li><a href="/workflows">Workflows</a></li>
+              <li><a href="/auth/api">API Key</a></li>
+            </ul>
+          </div>
+        </div>
+        <div class="navbar-center">
+          <h1 class="text-3xl"><b>Scavenger</b></h1>
+        </div>
+        <div class="navbar-end">
+          <a class="btn bg-gray-600 shadow-lg mr-4" href="/auth/logout">
+            Logout
+          </a>
+        </div>
+      </nav>
+    <div class="flex items-center justify-center h-screen w-screen">
+        <div class="bg-gray-800 rounded-box shadow-lg p-12">
+            <h1 class="text-2xl mb-8 font-bold">API Key</h1>
+            {{ with . }}
+                <div class="flex">
+                    <input id="api-key" type="text" value="{{ . }}" class="input input-bordered w-full max-w-xs" readonly />
+                    <button onclick="copyToClipboard()" class="btn btn-primary">
+                        Copy
+                    </button>
+                </div>
+                <p id="copy-result" class="pt-4"></p>
+                <script>
+                    function copyToClipboard() {
+                        const copyText = document.getElementById("api-key");
+                        navigator.clipboard.writeText(copyText.value)
+                        .then(() => {
+                            const res = document.getElementById("copy-result");
+                            res.textContent = "Copied to clipboard!";
+                        })
+                        .catch((err) => {
+                            console.error("Failed to copy: ", err);
+                        });
+                    }
+                </script>
+            {{ else }}
+                <form method="POST" action="/auth/api">
+                    <button class="btn" type="submit">Generate New Key</button>
+                </form>
+            {{ end }}
+        </div>
+    </div>
+</body>
+
+</html>

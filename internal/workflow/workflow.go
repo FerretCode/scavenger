@@ -10,6 +10,7 @@ import (
 	"strconv"
 	"strings"
 
+	"cloud.google.com/go/iam/apiv1/iampb"
 	run "cloud.google.com/go/run/apiv2"
 	"cloud.google.com/go/run/apiv2/runpb"
 	"go.mongodb.org/mongo-driver/v2/mongo"
@@ -39,7 +40,7 @@ type Workflow struct {
 	Schema     Schema `json:"schema"`
 }
 
-func Create(w http.ResponseWriter, r *http.Request, db *mongo.Client, runClient *run.ServicesClient, ctx *context.Context) error {
+func Create(w http.ResponseWriter, r *http.Request, db *mongo.Client, runClient *run.ServicesClient, ctx context.Context) error {
 	err := r.ParseForm()
 	if err != nil {
 		return err
@@ -48,7 +49,7 @@ func Create(w http.ResponseWriter, r *http.Request, db *mongo.Client, runClient 
 	fmt.Println("All form data:", r.PostForm)
 	fmt.Println("All form data:", r.Form)
 
-	workflowName := r.PostForm.Get("workflowName")
+	workflowName := r.PostForm.Get("nameInput")
 	website := r.PostForm.Get("websiteInput")
 	cron := r.PostForm.Get("cronInput")
 	prompt := r.PostForm.Get("promptInput")
@@ -82,7 +83,7 @@ func Create(w http.ResponseWriter, r *http.Request, db *mongo.Client, runClient 
 			Desc: fieldDesc,
 		}
 
-		schemaFieldName := strings.ReplaceAll(strings.ToLower(fieldName), " ", "_")
+		schemaFieldName := strings.ReplaceAll(strings.ToLower(fieldName), " ", "-")
 
 		schema.Properties[schemaFieldName] = field
 		schema.Required = append(schema.Required, schemaFieldName)
@@ -160,24 +161,49 @@ func Create(w http.ResponseWriter, r *http.Request, db *mongo.Client, runClient 
 		},
 	}
 
-	resp, err := runClient.CreateService(*ctx, createServiceRequest)
+	resp, err := runClient.CreateService(ctx, createServiceRequest)
 	if err != nil {
 		return err
 	}
 
-	service, err := resp.Wait(*ctx)
+	service, err := resp.Wait(ctx)
 	if err != nil {
 		return err
 	}
+
+	resource := fmt.Sprintf("projects/%s/locations/%s/services/%s", os.Getenv("GCP_PROJECT_ID"), os.Getenv("GCP_LOCATION"), createServiceRequest.ServiceId)
+
+	policy, err := runClient.GetIamPolicy(ctx, &iampb.GetIamPolicyRequest{
+		Resource: resource,
+	})
+	if err != nil {
+		return err
+	}
+
+	policy.Bindings = append(policy.Bindings, &iampb.Binding{
+		Role:    "roles/run.invoker",
+		Members: []string{"allUsers"},
+	})
+
+	_, err = runClient.SetIamPolicy(ctx, &iampb.SetIamPolicyRequest{
+		Resource: resource,
+		Policy:   policy,
+	})
+	if err != nil {
+		return err
+	}
+
+	workflowName = strings.ReplaceAll(strings.ToLower(workflowName), " ", "_")
 
 	workflow := Workflow{
 		Name:       workflowName,
 		ServiceUri: service.Uri,
 		Prompt:     prompt,
 		Schema:     schema,
+		Cron:       cron,
 	}
 
-	_, err = db.Database(os.Getenv("DATABASE_NAME")).Collection("workflows").InsertOne(*ctx, workflow)
+	_, err = db.Database(os.Getenv("DATABASE_NAME")).Collection("workflows").InsertOne(ctx, workflow)
 	if err != nil {
 		return err
 	}
@@ -193,7 +219,7 @@ func generateServiceID() string {
 	sb.WriteByte('a' + byte(rand.Intn(26)))
 
 	for i := 1; i < length-1; i++ {
-		if rand.Float64() < 0.15 {
+		if rand.Float64() < 0.15 && sb.String()[i-1] != '-' {
 			sb.WriteByte('-')
 		} else {
 			sb.WriteByte(serviceIDCharset[rand.Intn(len(serviceIDCharset))])
