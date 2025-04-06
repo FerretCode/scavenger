@@ -140,6 +140,12 @@ func main() {
 		handleError(templates.ExecuteTemplate(w, "dashboard.html", data), w, "dashboard/render")
 	})
 
+	// healthcheck for startup probe
+	r.Get("/healthz", func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(200)
+		w.Write([]byte("OK"))
+	})
+
 	r.Route("/workflows", func(r chi.Router) {
 		r.Use(auth.RequireAuth)
 
