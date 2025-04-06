@@ -4,6 +4,7 @@ module github.com/ferretcode/scavenger
 go 1.24.1
 
 require (
+	cloud.google.com/go/run v1.9.2
 	cloud.google.com/go/secretmanager v1.14.6
 	github.com/go-chi/chi/v5 v5.2.1
 	github.com/joho/godotenv v1.5.1
@@ -17,7 +18,6 @@ require (
 	cloud.google.com/go/compute/metadata v0.6.0 // indirect
 	cloud.google.com/go/iam v1.4.1 // indirect
 	cloud.google.com/go/longrunning v0.6.5 // indirect
-	cloud.google.com/go/run v1.9.2 // indirect
 	github.com/felixge/httpsnoop v1.0.4 // indirect
 	github.com/go-logr/logr v1.4.2 // indirect
 	github.com/go-logr/stdr v1.2.2 // indirect
