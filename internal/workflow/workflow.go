@@ -57,7 +57,7 @@ func Create(w http.ResponseWriter, r *http.Request, db *mongo.Client, runClient 
 		Properties: make(map[string]Field),
 	}
 
-	for i := 0; i < fieldCounter; i++ {
+	for i := 0; i <= fieldCounter; i++ {
 		fieldName := r.PostForm.Get(fmt.Sprintf("fieldName_%d", i))
 		fieldType := r.PostForm.Get(fmt.Sprintf("fieldType_%d", i))
 		fieldDesc := r.PostForm.Get(fmt.Sprintf("fieldDesc_%d", i))
