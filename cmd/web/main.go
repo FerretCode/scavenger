@@ -213,9 +213,9 @@ func main() {
 			},
 		},
 		TopCardData: dashboard.TopDashData{
-			RunningWorkflows:  1,
-			DocumentsScraped:  2,
-			ClientConnections: 3,
+			RunningWorkflows:  0,
+			DocumentsScraped:  0,
+			ClientConnections: 0,
 		},
 	}
 
@@ -247,9 +247,9 @@ func main() {
 			handleError(workflow.Create(w, r, db, runClient, ctx), w, "workflow/create")
 
 		})
-		
-		r.Post("/delete", func(w http.ResponseWriter, r *http.Request){
-			handleError(workflow.Delete(w,r,db,runClient,ctx),w,"workflow/delete")
+
+		r.Post("/delete", func(w http.ResponseWriter, r *http.Request) {
+			handleError(workflow.Delete(w, r, db, runClient, ctx), w, "workflow/delete")
 		})
 
 	})
