@@ -61,13 +61,16 @@
               <div class="w-1/2">
                 <div>
                   <div class="pb-4">
-                    <label for="websiteInput" class="text-xl" id="websiteInputLabel"><b>Website URL</b></label>
+                    <label for="websiteInput" class="text-xl" id="websiteInputLabel"><b>Website
+                        URL</b></label>
                   </div>
                   <label class="input validator">
                     <svg class="h-[1em] opacity-50" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
                       <g stroke-linejoin="round" stroke-linecap="round" stroke-width="2.5" fill="none" stroke="currentColor">
-                        <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path>
-                        <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path>
+                        <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71">
+                        </path>
+                        <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71">
+                        </path>
                       </g>
                     </svg>
                     <input type="url" name="websiteInput" id="websiteInput" required placeholder="https://" value="https://" pattern="^(https?://)?([a-zA-Z0-9]([a-zA-Z0-9\-].*[a-zA-Z0-9])?\.)+[a-zA-Z].*$" title="Must be valid URL" />
@@ -153,7 +156,6 @@
       const fieldDesc = document.getElementById('fieldDescInput').value;
 
       if (fieldName == "" || fieldType == "" || fieldDesc == "") {
-        console.log("OGGA BOOGA");
         alert("missing field information");
         return;
       }
@@ -224,8 +226,6 @@
 
       document.getElementById("numberFields").value = numberFields;
       numberFields++;
-
-      document
     }
   </script>
 
