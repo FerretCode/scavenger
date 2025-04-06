@@ -13,7 +13,7 @@
 </head>
 
 <body>
-  <nav class="navbar bg-gray-800 shadow-sm border-b-2 border-black border-solid">
+  <nav class="navbar bg-gray-900 shadow-sm border-b-2 border-black border-solid">
     <div class="navbar-start">
       <div class="dropdown">
         <div tabindex="0" role="button" class="btn btn-ghost btn-circle">
@@ -39,11 +39,14 @@
 
   <div class="flex">
     <!-- left sidebar menu takes 1/4 of screen -->
-    <div class="w-1/4 bg-base-200 h-screen p-4">
+    <div class="w-1/4 bg-base-200 min-h-screen p-4">
       <ul class="menu bg-base-200 rounded-box w-full">
         <li><button class="menu-item" onclick="showContent('createWorkflow')">Create New Workflow</button></li>
         <!-- TEMPLATE: insert menu options for each saved workflow -->
-        <li><button class="menu-item" onclick="showContent('example')">Example</button></li>
+        {{range .Workflows}}
+        <li><button class="menu-item" onclick="showContent('{{ .Name }}')">
+            {{ .Name }}</button></li>
+        {{end}}
       </ul>
     </div>
 
@@ -58,6 +61,16 @@
               <h2 class="text-2xl font-bold text-yellow-200">Create Your Scraping Workflow</h2>
 
               <button type="submit" class="btn btn-info text-lg">Submit Workflow</button>
+            </div>
+            <div class="flex gap-8">
+              <div>
+                <div class="mb-8">
+                  <div class="pb-4">
+                    <label for="nameInput" class="text-xl" id="nameInputLabel"><b>Name Input</b></label>
+                  </div>
+                  <input type="text" class="input" name="nameInput" id="nameInput" placeholder="Type Here" pattern="^[a-z][a-z0-9_-]*$" required>
+                </div>
+              </div>
             </div>
 
             <div class="flex gap-8">
@@ -199,8 +212,7 @@
                 </span>
               </div>
             </div>
-        </div>
-      `
+            `
       fieldSection.appendChild(card);
 
       // add hidden input div filled with three hidden input elements
@@ -245,16 +257,74 @@
   <script>
     // Function to display dynamic content based on the selected menu item
     function showContent(workflowName) {
-      const contentArea = document.getElementById('contentArea');
-
+      var numberFields = 0;
+      const fieldSection = document.getElementById('fieldCardSection');
+      fieldSection.innerHTML = "";
       let elemsObj = {
+        nameElem: document.getElementById('nameInput'),
         websiteElem: document.getElementById('websiteInput'),
         cronElem: document.getElementById('cronInput'),
         promptElem: document.getElementById('promptInput'),
-        fieldNameElem: document.getElementById('fieldNameInput'),
-        fieldTypeInput: document.getElementById('fieldTypeInput'),
-        fieldDescInput: document.getElementById('fieldDescInput')
       }
+
+      // check if the button selected was the create new workflow button
+      if (workflowName == "createWorkflow") {
+        elemsObj.nameElem.value = ""
+        elemsObj.websiteElem.value = ""
+        elemsObj.cronElem.value = ""
+        elemsObj.promptElem.value = ""
+        return
+      }
+
+      // if button selected was valid workflow, populate form and make cards
+      {{range .Workflows}}
+      if (workflowName == "{{ .Name }}") {
+        elemsObj.nameElem.value = `${workflowName}`
+        elemsObj.websiteElem.value = "{{ .ServiceUri }}"
+        elemsObj.cronElem.value = "{{ .Cron }}"
+        elemsObj.promptElem.value = "{{ .Prompt }}"
+
+        // function to create a field card
+        function createFieldCard(name, type, desc) {
+          const card = document.createElement('div');
+          card.id = `field_${numberFields}`
+          card.innerHTML = `
+                  <div class="menu bg-base-200 rounded-box w-full fieldCard">
+                    <div class="bg-gray-800 p-4">
+                      <span class="flex mb-4 border-b-2 border-solid border-black p-2">
+                        <h3 class="text-md flex-col w-1/2"><b>Field Name</b></h3>
+                        <p class="flex-col w-1/2">
+                          "${name}"
+                        </p>
+                      </span>
+                      <span class="flex mb-4 border-b-2 border-solid border-black p-2">
+                        <h3 class="text-md flex-col w-1/2"><b>Field Type</b></h3>
+                        <p class="flex-col w-1/2">
+                          "${type}"
+                        </p>
+                      </span>
+                      <span class="flex mb-4 border-b-2 border-solid border-black p-2">
+                        <h3 class="text-md flex-col w-1/2"><b>Field Description</b></h3>
+                        <p class="flex-col w-1/2">
+                          "${desc}"
+                        </p>
+                      </span>
+                      <span class="mb-4 flex justify-center items-center">
+                        <button type="button" class="btn btn-error ml-1 mb-4 mt-4 text-md" onclick="fieldRemove('field_${numberFields}')">Remove This JSON Field</button>
+                      </span>
+                    </div>
+                  </div>
+                  `
+          fieldSection.appendChild(card);
+          numberFields++
+        }
+        // create cards for each field
+        {{range .Schema.Properties}}
+        createFieldCard("{{ .Name }}", "{{ .Type }}", "{{ .Desc }}")
+        {{end}}
+      }
+      {{end}}
+
     }
   </script>
 

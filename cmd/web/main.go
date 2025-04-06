@@ -108,30 +108,103 @@ func main() {
 	r := chi.NewRouter()
 
 	mockWorkflows := dashboard.DashboardData{
-		Workflows: []workflow.Workflows{
+		Workflows: []workflow.Workflow{
 			{
-				Name:   "Workflow 1",
-				URL:    "http://example.com/workflow1",
-				Cron:   "0 0 * * *",
-				Prompt: "Run the first workflow every midnight",
+				Name:       "Workflow 1",
+				ServiceUri: "http://example.com/workflow1",
+				Cron:       "0 0 * * *",
+				Prompt:     "Run the first workflow every midnight",
+				Schema: workflow.Schema{
+					Title: "Workflow 1 Schema",
+					Type:  "object",
+					Properties: map[string]workflow.Field{
+						"field1": {
+							Name: "Field 1",
+							Type: "string",
+							Desc: "The first field for Workflow 1",
+						},
+						"field2": {
+							Name: "Field 2",
+							Type: "integer",
+							Desc: "The second field for Workflow 1",
+						},
+					},
+					Required: []string{"field1"},
+				},
 			},
 			{
-				Name:   "Workflow 2",
-				URL:    "http://example.com/workflow2",
-				Cron:   "0 6 * * *",
-				Prompt: "Run the second workflow every morning at 6 AM",
+				Name:       "Workflow 2",
+				ServiceUri: "http://example.com/workflow2",
+				Cron:       "0 6 * * *",
+				Prompt:     "Run the second workflow every morning at 6 AM",
+				Schema: workflow.Schema{
+					Title: "Workflow 2 Schema",
+					Type:  "object",
+					Properties: map[string]workflow.Field{
+						"field1": {
+							Name: "Field 1",
+							Type: "string",
+							Desc: "The first field for Workflow 2",
+						},
+						"field2": {
+							Name: "Field 2",
+							Type: "boolean",
+							Desc: "The second field for Workflow 2",
+						},
+					},
+					Required: []string{"field1", "field2"},
+				},
 			},
 			{
-				Name:   "Workflow 3",
-				URL:    "http://example.com/workflow3",
-				Cron:   "0 12 * * *",
-				Prompt: "Run the third workflow every day at noon",
+				Name:       "Workflow 3",
+				ServiceUri: "http://example.com/workflow3",
+				Cron:       "0 12 * * *",
+				Prompt:     "Run the third workflow every day at noon",
+				Schema: workflow.Schema{
+					Title: "Workflow 3 Schema",
+					Type:  "object",
+					Properties: map[string]workflow.Field{
+						"field1": {
+							Name: "Field 1",
+							Type: "string",
+							Desc: "The first field for Workflow 3",
+						},
+						"field2": {
+							Name: "Field 2",
+							Type: "float",
+							Desc: "The second field for Workflow 3",
+						},
+					},
+					Required: []string{"field1"},
+				},
 			},
 			{
-				Name:   "Workflow 4",
-				URL:    "http://example.com/workflow4",
-				Cron:   "0 18 * * *",
-				Prompt: "Run the fourth workflow every evening at 6 PM",
+				Name:       "Workflow 4",
+				ServiceUri: "http://example.com/workflow4",
+				Cron:       "0 18 * * *",
+				Prompt:     "Run the fourth workflow every evening at 6 PM",
+				Schema: workflow.Schema{
+					Title: "Workflow 4 Schema",
+					Type:  "object",
+					Properties: map[string]workflow.Field{
+						"field1": {
+							Name: "Field 1",
+							Type: "string",
+							Desc: "The first field for Workflow 4",
+						},
+						"field2": {
+							Name: "Field 2",
+							Type: "integer",
+							Desc: "The second field for Workflow 4",
+						},
+						"field3": {
+							Name: "Field 3",
+							Type: "boolean",
+							Desc: "The third field for Workflow 4",
+						},
+					},
+					Required: []string{"field1", "field2"},
+				},
 			},
 		},
 		TopCardData: dashboard.GetTopDashData(),
