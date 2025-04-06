@@ -264,8 +264,6 @@ func generateServiceID() string {
 
 func GetRunningWorkflows(runClient *run.ServicesClient, ctx context.Context) (int, error) {
 
-	fmt.Println("GOT HERE FIRST")
-
 	parent := fmt.Sprintf("projects/%s/locations/%s", os.Getenv("GCP_PROJECT_ID"), os.Getenv("GCP_LOCATION"))
 
 	url := fmt.Sprintf("https://run.googleapis.com/v2/%s/services", parent)
@@ -275,8 +273,6 @@ func GetRunningWorkflows(runClient *run.ServicesClient, ctx context.Context) (in
 		return 0, err
 	}
 	req.Header.Set("Content-Type", "application/json")
-
-	fmt.Println("GOT HERE SECOND")
 
 	requestRunPB := &runpb.ListServicesRequest{
 		Parent: parent,
@@ -293,12 +289,6 @@ func GetRunningWorkflows(runClient *run.ServicesClient, ctx context.Context) (in
 			done = true
 		}
 	}
-
-	fmt.Println("GOT HERE THIRD")
-
-	fmt.Println("INTERESTING")
-
-	fmt.Println("AFTER RESP")
 
 	return totalContainers, nil
 }
