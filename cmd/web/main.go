@@ -140,6 +140,7 @@ func main() {
 	}
 
 	r.With(auth.RequireAuth).Get("/", func(w http.ResponseWriter, r *http.Request) {
+		mockWorkflows.TopCardData = dashboard.GetTopDashData(runClient, ctx)
 		handleError(templates.ExecuteTemplate(w, "dashboard.html", mockWorkflows), w, "dashboard/render")
 	})
 
@@ -152,11 +153,13 @@ func main() {
 
 		r.Post("/create", func(w http.ResponseWriter, r *http.Request) {
 			handleError(workflow.Create(w, r, db, runClient, ctx), w, "workflow/create")
-		})
-
-		r.Get("/watch/{workflow_name}", func(w http.ResponseWriter, r *http.Request) {
 
 		})
+
+		r.Post("/delete", func(w http.ResponseWriter, r *http.Request) {
+			handleError(workflow.Delete(w, r, db, runClient, ctx), w, "workflow/delete")
+		})
+
 	})
 
 	r.With(auth.RequireAPIKey(ctx, db, logger)).Get("/connect/{workflow_name}", func(w http.ResponseWriter, r *http.Request) {

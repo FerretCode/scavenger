@@ -13,7 +13,9 @@ import (
 	"cloud.google.com/go/iam/apiv1/iampb"
 	run "cloud.google.com/go/run/apiv2"
 	"cloud.google.com/go/run/apiv2/runpb"
+	"go.mongodb.org/mongo-driver/v2/bson"
 	"go.mongodb.org/mongo-driver/v2/mongo"
+	"google.golang.org/api/iterator"
 )
 
 const serviceIDCharset = "abcdefghijklmnopqrstuvwxyz0123456789"
@@ -38,6 +40,30 @@ type Workflow struct {
 	Prompt     string `json:"prompt"`
 	Cron       string `json:"cron"`
 	Schema     Schema `json:"schema"`
+}
+
+
+func Delete (w http.ResponseWriter, r *http.Request, db *mongo.Client, runClient *run.ServicesClient, ctx context.Context ) error {
+	err := r.ParseForm()
+	if err != nil{
+		return err
+	}
+
+	workflowName := r.PostForm.Get("workflowName")
+ 
+	workflow := Workflow{}
+	workflow.Name = workflowName
+
+	bsonFilter := bson.D{{Key:"workflowName",Value: workflowName},}
+	fmt.Println(bsonFilter)
+	
+
+	_, err = db.Database(os.Getenv("DATABASE_NAME")).Collection("workflows").DeleteOne(ctx,bsonFilter)
+	if err != nil{
+		return err
+	}
+
+	return nil
 }
 
 func Create(w http.ResponseWriter, r *http.Request, db *mongo.Client, runClient *run.ServicesClient, ctx context.Context) error {
@@ -193,8 +219,8 @@ func Create(w http.ResponseWriter, r *http.Request, db *mongo.Client, runClient 
 		return err
 	}
 
+  
 	workflowName = strings.ReplaceAll(strings.ToLower(workflowName), " ", "_")
-
 	workflow := Workflow{
 		Name:       workflowName,
 		ServiceUri: service.Uri,
@@ -237,8 +263,45 @@ func generateServiceID() string {
 	return sb.String()
 }
 
-func GetRunningWorkflows() (int, error) {
-	return 1, nil
+func GetRunningWorkflows(runClient *run.ServicesClient, ctx context.Context) (int, error) {
+
+	fmt.Println("GOT HERE FIRST")
+
+	parent := fmt.Sprintf("projects/%s/locations/%s", os.Getenv("GCP_PROJECT_ID"), os.Getenv("GCP_LOCATION"))
+
+	url := fmt.Sprintf("https://run.googleapis.com/v2/%s/services", parent)
+
+	req, err := http.NewRequest("GET", url, nil)
+	if err != nil {
+		return 0, err
+	}
+	req.Header.Set("Content-Type", "application/json")
+
+	fmt.Println("GOT HERE SECOND")
+
+	requestRunPB := &runpb.ListServicesRequest{
+		Parent: parent,
+	}
+
+	resp := runClient.ListServices(ctx, requestRunPB)
+	done := false
+	totalContainers := 0
+
+	for !done {
+		if _, err := resp.Next(); err != iterator.Done {
+			totalContainers++
+		} else {
+			done = true
+		}
+	}
+
+	fmt.Println("GOT HERE THIRD")
+
+	fmt.Println("INTERESTING")
+
+	fmt.Println("AFTER RESP")
+
+	return totalContainers, nil
 }
 
 func GetDocumentScraped() (int, error) {
