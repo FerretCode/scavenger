@@ -1,9 +1,13 @@
 package workflow
 
 import (
+	"context"
+	"encoding/json"
 	"fmt"
 	"net/http"
 	"os"
+	"strconv"
+	"strings"
 
 	run "cloud.google.com/go/run/apiv2"
 	"cloud.google.com/go/run/apiv2/runpb"
@@ -11,8 +15,65 @@ import (
 	"go.mongodb.org/mongo-driver/v2/mongo"
 )
 
-func Create(w http.ResponseWriter, r *http.Request, db *mongo.Client, runClient *run.ServicesClient) error {
+type Field struct {
+	Name string `json:"title"`
+	Type string `json:"type"`
+	Desc string `json:"description"`
+}
+
+type Schema struct {
+	Properties map[string]Field `json:"properties"`
+	Required   []string         `json:"required"`
+	Title      string           `json:"title"`
+	Type       string           `json:"type"`
+}
+
+func Create(w http.ResponseWriter, r *http.Request, db *mongo.Client, runClient *run.ServicesClient, ctx *context.Context) error {
 	// TODO: perform database insertion
+	err := r.ParseForm()
+	if err != nil {
+		return err
+	}
+
+	website := r.PostForm.Get("websiteInput")
+	cron := r.PostForm.Get("cronInput")
+	prompt := r.PostForm.Get("promptInput")
+	numberFields := r.PostForm.Get("numberFields")
+
+	fieldCounter, err := strconv.Atoi(numberFields)
+	if err != nil {
+		return err
+	}
+
+	var schema Schema
+
+	for i := 0; i < fieldCounter; i++ {
+
+		fieldName := r.PostForm.Get(fmt.Sprintf("fieldName_%d", i))
+		fieldType := r.PostForm.Get(fmt.Sprintf("fieldType_%d", i))
+		fieldDesc := r.PostForm.Get(fmt.Sprintf("fieldDesc_%d", i))
+
+		if fieldName == "" || fieldType == "" || fieldDesc == "" {
+			// the field was deleted
+			// the field counter is never udpated when a field is deleted
+			continue
+		}
+
+		field := Field{
+			Name: fieldName,
+			Type: fieldType,
+			Desc: fieldDesc,
+		}
+
+		schemaFieldName := strings.ReplaceAll(strings.ToLower(fieldName), " ", "_")
+
+		schema.Properties[schemaFieldName] = field
+	}
+
+	schemaString, err := json.Marshal(schema)
+	if err != nil {
+		return err
+	}
 
 	createServiceRequest := &runpb.CreateServiceRequest{
 		Parent:    fmt.Sprintf("projects/%s/location/%s", os.Getenv("PROJECT_ID"), os.Getenv("GCP_LOCATION")),
@@ -31,31 +92,31 @@ func Create(w http.ResponseWriter, r *http.Request, db *mongo.Client, runClient 
 							{
 								Name: "CRONTAB",
 								Values: &runpb.EnvVar_Value{
-									Value: "test",
+									Value: cron,
 								},
 							},
 							{
 								Name: "GEMINI_API_KEY",
 								Values: &runpb.EnvVar_Value{
-									Value: "test",
+									Value: os.Getenv("GEMINI_API_KEY"),
 								},
 							},
 							{
 								Name: "SCHEMA",
 								Values: &runpb.EnvVar_Value{
-									Value: "test",
+									Value: string(schemaString),
 								},
 							},
 							{
 								Name: "PROMPT",
 								Values: &runpb.EnvVar_Value{
-									Value: "test",
+									Value: prompt,
 								},
 							},
 							{
 								Name: "WEBPAGE_URL",
 								Values: &runpb.EnvVar_Value{
-									Value: "test",
+									Value: website,
 								},
 							},
 						},
@@ -65,7 +126,17 @@ func Create(w http.ResponseWriter, r *http.Request, db *mongo.Client, runClient 
 		},
 	}
 
-	resp, err := runClient
+	resp, err := runClient.CreateService(*ctx, createServiceRequest)
+	if err != nil {
+		return err
+	}
+
+	service, err := resp.Wait(*ctx)
+	if err != nil {
+		return err
+	}
+
+	fmt.Println(service.Uri)
 
 	return nil
 }

@@ -14,6 +14,7 @@ import (
 	"cloud.google.com/go/run/apiv2"
 	secretmanager "cloud.google.com/go/secretmanager/apiv1"
 	"github.com/ferretcode/scavenger/internal/auth"
+	"github.com/ferretcode/scavenger/internal/workflow"
 	"github.com/go-chi/chi/v5"
 	"github.com/joho/godotenv"
 	"go.mongodb.org/mongo-driver/v2/mongo"
@@ -78,7 +79,7 @@ func main() {
 	defer secretManagerClient.Close()
 	_ = secretManagerClient
 
-	runClient, err := run.NewServicesClient(ctx)
+	runClient, err := run.NewServicesClient(ctx, option.WithCredentialsFile("./credentials.json"))
 	if err != nil {
 		logger.Error("error creating google run client", "err", err)
 		return
@@ -110,7 +111,7 @@ func main() {
 
 	r.Route("/workflow", func(r chi.Router) {
 		r.Post("/create", func(w http.ResponseWriter, r *http.Request) {
-
+			handleError(workflow.Create(w, r, db, runClient, &ctx), w, "workflow/create")
 		})
 	})
 
