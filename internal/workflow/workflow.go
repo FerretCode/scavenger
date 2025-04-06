@@ -40,7 +40,7 @@ type Workflow struct {
 	Schema     Schema `json:"schema"`
 }
 
-func Create(w http.ResponseWriter, r *http.Request, db *mongo.Client, runClient *run.ServicesClient, ctx *context.Context) error {
+func Create(w http.ResponseWriter, r *http.Request, db *mongo.Client, runClient *run.ServicesClient, ctx context.Context) error {
 	err := r.ParseForm()
 	if err != nil {
 		return err
@@ -161,12 +161,12 @@ func Create(w http.ResponseWriter, r *http.Request, db *mongo.Client, runClient 
 		},
 	}
 
-	resp, err := runClient.CreateService(*ctx, createServiceRequest)
+	resp, err := runClient.CreateService(ctx, createServiceRequest)
 	if err != nil {
 		return err
 	}
 
-	service, err := resp.Wait(*ctx)
+	service, err := resp.Wait(ctx)
 	if err != nil {
 		return err
 	}
@@ -203,7 +203,7 @@ func Create(w http.ResponseWriter, r *http.Request, db *mongo.Client, runClient 
 		Cron:       cron,
 	}
 
-	_, err = db.Database(os.Getenv("DATABASE_NAME")).Collection("workflows").InsertOne(*ctx, workflow)
+	_, err = db.Database(os.Getenv("DATABASE_NAME")).Collection("workflows").InsertOne(ctx, workflow)
 	if err != nil {
 		return err
 	}
