@@ -1,0 +1,7 @@
+name: scavenger
+description: A self-hostable web scraping workflow dashboard
+runtime: go
+config:
+  pulumi:tags:
+    value:
+      pulumi:template: gcp-go
