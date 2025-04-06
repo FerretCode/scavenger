@@ -1,14 +1,16 @@
 import os
 import asyncio
 import json
+from aiohttp import web, WSMsgType
 from typing import Union
 from crawl4ai import AsyncWebCrawler, BrowserConfig, CrawlerRunConfig, CacheMode, LLMConfig
 from crawl4ai.extraction_strategy import LLMExtractionStrategy
 from apscheduler.schedulers.background import BackgroundScheduler
 from apscheduler.triggers.cron import CronTrigger
 from dotenv import load_dotenv
-from websockets.exceptions import ConnectionClosed
-from websockets.asyncio.server import serve
+
+# Constants
+PORT = int(os.getenv("PORT", 8080))
 
 load_dotenv()
 
@@ -19,18 +21,28 @@ scrape_queue = asyncio.Queue()
 event_loop: Union[asyncio.AbstractEventLoop, None] = None
 
 
-async def serve_websocket(websocket):
+async def websocket_handler(request):
     print("[WebSocket] Client connected")
-    connected_websockets.add(websocket)
+    ws = web.WebSocketResponse()
+    await ws.prepare(request)
+
+    connected_websockets.add(ws)
 
     try:
         if latest_result:
-            await websocket.send(latest_result)
+            await ws.send_str(latest_result)
             print("[WebSocket] Sent cached result")
-        await websocket.wait_closed()
+
+        async for msg in ws:
+            if msg.type == WSMsgType.TEXT:
+                pass  # Handle client messages here if needed
+            elif msg.type == WSMsgType.ERROR:
+                print(f"[WebSocket] Error: {ws.exception()}")
     finally:
         print("[WebSocket] Client disconnected")
-        connected_websockets.remove(websocket)
+        connected_websockets.remove(ws)
+
+    return ws
 
 
 async def scraper_worker(run_config):
@@ -55,13 +67,12 @@ async def scraper_worker(run_config):
                 latest_result = result[0].extracted_content
                 print("[Scraper] Updated latest result")
 
-                # broadcast to all connected clients
                 disconnected = []
                 for ws in connected_websockets:
                     try:
-                        await ws.send(latest_result)
+                        await ws.send_str(latest_result)
                         print("[Broadcast] Sent to a client")
-                    except ConnectionClosed:
+                    except Exception:
                         print("[Broadcast] Removing closed connection")
                         disconnected.append(ws)
 
@@ -74,15 +85,29 @@ async def scraper_worker(run_config):
                 scrape_queue.task_done()
 
     finally:
-        # Only close the browser when the worker stops completely
         await crawler.close()
+
+
+async def health_check(request):
+    return web.Response(text="OK")
+
+
+async def start_server():
+    app = web.Application()
+    app.router.add_get('/healthz', health_check)
+    app.router.add_get('/ws', websocket_handler)
+
+    runner = web.AppRunner(app)
+    await runner.setup()
+    site = web.TCPSite(runner, '0.0.0.0', PORT)
+    await site.start()
+    print(f"[App] Server running on http://0.0.0.0:{PORT}")
 
 
 async def main():
     global event_loop
     event_loop = asyncio.get_running_loop()
 
-    # start scheduler
     scheduler = BackgroundScheduler()
     cron_trigger = CronTrigger.from_crontab(os.environ["CRONTAB"])
 
@@ -102,7 +127,7 @@ async def main():
 
     def schedule_scrape():
         if event_loop is None:
-            return  # do not schedule a scraping job if the event loop is not assigned
+            return
         print("[Scheduler] Enqueueing scrape task")
         event_loop.call_soon_threadsafe(scrape_queue.put_nowait, None)
 
@@ -110,13 +135,10 @@ async def main():
     scheduler.start()
 
     await scrape_queue.put(None)
-
-    # start background scraper worker
     asyncio.create_task(scraper_worker(run_config))
+    await start_server()
+    await asyncio.Future()  # run forever
 
-    async with serve(serve_websocket, "localhost", 8765):
-        print("[WebSocket] Server running on ws://localhost:8765")
-        await asyncio.Future()
 
 if __name__ == "__main__":
     asyncio.run(main())
