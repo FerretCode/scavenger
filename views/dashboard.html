@@ -23,7 +23,7 @@
         </div>
         <ul tabindex="0" class="menu menu-sm dropdown-content bg-base-100 rounded-box z-1 mt-3 w-52 p-2 shadow">
           <li><a href="/">Dashboard</a></li>
-          <li><a href="/workflows">workflows</a></li>
+          <li><a href="/workflows">Workflows</a></li>
         </ul>
       </div>
     </div>
@@ -36,6 +36,41 @@
       </a>
     </div>
   </nav>
+
+  <!-- create info cards at the top of dashboard -->
+  <!-- TODO: Readd the final {} bracket into each of these three go template insertions -->
+  <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 p-4">
+    <div class="bg-base-200 rounded-box workflowCard">
+      <div class="bg-gray-800 p-4">
+        <span class="flex mb-4 border-b-2 border-solid border-black p-2 gap-4">
+          <h3 class="text-lg w-1/2"><b>Number of Running Workflows</b></h3>
+          <p class="w-1/2 break-words">
+            {{ .TopCardData.RunningWorkflows }}
+          </p>
+        </span>
+      </div>
+    </div>
+    <div class="bg-base-200 rounded-box workflowCard">
+      <div class="bg-gray-800 p-4">
+        <span class="flex mb-4 border-b-2 border-solid border-black p-2 gap-4">
+          <h3 class="text-lg w-1/2"><b>Total Documents Scraped</b></h3>
+          <p class="w-1/2 break-words">
+            {{ .TopCardData.DocumentsScraped }}
+          </p>
+        </span>
+      </div>
+    </div>
+    <div class="bg-base-200 rounded-box workflowCard">
+      <div class="bg-gray-800 p-4">
+        <span class="flex mb-4 border-b-2 border-solid border-black p-2 gap-4">
+          <h3 class="text-lg w-1/2"><b>Active Client Connections</b></h3>
+          <p class="w-1/2 break-words">
+            {{ .TopCardData.ClientConnections }}
+          </p>
+        </span>
+      </div>
+    </div>
+  </div>
 
   <!-- create the list of cards -->
   <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 p-4">
