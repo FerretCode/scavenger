@@ -37,6 +37,41 @@
     </div>
   </nav>
 
+  <!-- create info cards at the top of dashboard -->
+  <!-- TODO: Readd the final {} bracket into each of these three go template insertions -->
+  <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 p-4">
+    <div class="bg-base-200 rounded-box workflowCard">
+      <div class="bg-gray-800 p-4">
+        <span class="flex mb-4 border-b-2 border-solid border-black p-2 gap-4">
+          <h3 class="text-lg w-1/2"><b>Number of Running Workflows</b></h3>
+          <p class="w-1/2 break-words">
+            { .RunningWorkflows }
+          </p>
+        </span>
+      </div>
+    </div>
+    <div class="bg-base-200 rounded-box workflowCard">
+      <div class="bg-gray-800 p-4">
+        <span class="flex mb-4 border-b-2 border-solid border-black p-2 gap-4">
+          <h3 class="text-lg w-1/2"><b>Total Documents Scraped</b></h3>
+          <p class="w-1/2 break-words">
+            { .DocumentsScraped }
+          </p>
+        </span>
+      </div>
+    </div>
+    <div class="bg-base-200 rounded-box workflowCard">
+      <div class="bg-gray-800 p-4">
+        <span class="flex mb-4 border-b-2 border-solid border-black p-2 gap-4">
+          <h3 class="text-lg w-1/2"><b>Active Client Connections</b></h3>
+          <p class="w-1/2 break-words">
+            { .ClientConnections }
+          </p>
+        </span>
+      </div>
+    </div>
+  </div>
+
   <!-- create the list of cards -->
   <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 p-4">
     {{range .Workflows}}
