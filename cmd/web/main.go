@@ -5,6 +5,8 @@ import (
 	"encoding/hex"
 	"log"
 	"net/http"
+	"net/http/httputil"
+	"net/url"
 	"sync"
 	"text/template"
 
@@ -54,6 +56,7 @@ func main() {
 			return
 		}
 
+		//race conditions
 		sessionsMu.Lock()
 		sessions[token] = true
 		sessionsMu.Unlock()
@@ -122,4 +125,20 @@ func requireAuth(next http.Handler) http.Handler {
 
 		next.ServeHTTP(w, r)
 	})
+}
+
+//taking the host req
+//creatign a reverse proxy using httputil
+func connectingHostToUser(hostString string)(*httputil.ReverseProxy,error){
+	url, err := url.Parse(hostString)
+	if err != nil{
+		return nil, err
+	}
+	return httputil.NewSingleHostReverseProxy(url), nil
+}
+
+func proxyRequestHandler(proxy *httputil.ReverseProxy) func(http.ResponseWriter, *http.Request){
+		return func(w http.ResponseWriter, r *http.Request){
+				proxy.ServeHTTP(w,r)
+		}		
 }
