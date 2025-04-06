@@ -377,10 +377,10 @@ func main() {
 		clientConn.Close()
 		serverConn.Close()
 
+		wg.Wait()
+
 		lastTwoCards.DocScraped--
 		lastTwoCards.CliConnects--
-
-		wg.Wait()
 	})
 
 	r.Route("/auth", func(r chi.Router) {
