@@ -3,12 +3,14 @@ package main
 import (
 	"context"
 	"html/template"
+	"io"
 	"log"
 	"log/slog"
 	"net/http"
 	"net/http/httputil"
 	"net/url"
 	"os"
+	"sync"
 	"time"
 
 	run "cloud.google.com/go/run/apiv2"
@@ -17,6 +19,7 @@ import (
 	"github.com/ferretcode/scavenger/internal/dashboard"
 	"github.com/ferretcode/scavenger/internal/workflow"
 	"github.com/go-chi/chi/v5"
+	"github.com/gorilla/websocket"
 	"github.com/joho/godotenv"
 	"go.mongodb.org/mongo-driver/v2/bson"
 	"go.mongodb.org/mongo-driver/v2/mongo"
@@ -229,29 +232,132 @@ func main() {
 	})
 
 	r.With(auth.RequireAPIKey(ctx, db, logger)).Get("/connect/{workflow_name}", func(w http.ResponseWriter, r *http.Request) {
+		upgrader := websocket.Upgrader{
+			CheckOrigin: func(r *http.Request) bool {
+				return true
+			},
+		}
+
+		clientConn, err := upgrader.Upgrade(w, r, nil)
+		if err != nil {
+			handleError(err, w, "connect/upgrade")
+			return
+		}
+
 		workflowName := chi.URLParam(r, "workflow_name")
 		filter := bson.D{{"name", workflowName}}
 		res := db.Database("scavenger").Collection("workflows").FindOne(ctx, filter)
 		workflow := workflow.Workflow{}
 
 		if res.Err() != nil {
-			handleError(res.Err(), w, "connect")
+			clientConn.Close()
+			handleError(res.Err(), w, "connect/find")
 			return
 		}
 
-		err := res.Decode(&workflow)
+		err = res.Decode(&workflow)
 		if err != nil {
-			handleError(err, w, "connect")
+			clientConn.Close()
+			handleError(err, w, "connect/decode")
 			return
 		}
 
-		proxy, err := proxyToUri(workflow.ServiceUri)
+		serviceUri, err := url.Parse(workflow.ServiceUri)
 		if err != nil {
-			handleError(err, w, "connect")
+			clientConn.Close()
+			handleError(err, w, "connect/service")
 			return
 		}
 
-		proxy.ServeHTTP(w, r)
+		if serviceUri.Scheme == "https" {
+			serviceUri.Scheme = "wss"
+		} else {
+			serviceUri.Scheme = "ws"
+		}
+
+		targetUri := serviceUri.String() + "/ws"
+
+		dialer := websocket.DefaultDialer
+
+		serverConn, resp, err := dialer.Dial(targetUri, nil)
+		if err != nil {
+			clientConn.Close()
+			if resp != nil {
+				body, readErr := io.ReadAll(resp.Body)
+				if readErr != nil {
+					logger.Error("handshake failed", "status", resp.StatusCode, "err", readErr)
+				} else {
+					logger.Error("handshake failed", "status", resp.StatusCode, "body", string(body))
+				}
+			}
+			handleError(err, w, "connect/connection")
+			return
+		}
+
+		ctx, cancel := context.WithCancel(r.Context())
+		defer cancel()
+
+		var wg sync.WaitGroup
+		wg.Add(2)
+
+		go func() {
+			defer wg.Done()
+			defer cancel()
+
+			for {
+				select {
+				case <-ctx.Done():
+					return
+				default:
+					mt, message, err := clientConn.ReadMessage()
+					if err != nil {
+						logger.Error("read from client failed", "err", err)
+						return
+					}
+
+					err = serverConn.WriteMessage(mt, message)
+					if err != nil {
+						logger.Error("write to server failed", "err", err)
+						return
+					}
+				}
+			}
+		}()
+
+		go func() {
+			defer wg.Done()
+			defer cancel()
+
+			for {
+				select {
+				case <-ctx.Done():
+					return
+				default:
+					mt, message, err := serverConn.ReadMessage()
+					if err != nil {
+						logger.Error("read from server failed", "err", err)
+						return
+					}
+
+					err = clientConn.WriteMessage(mt, message)
+					if err != nil {
+						logger.Error("write to client failed", "err", err)
+						return
+					}
+				}
+			}
+		}()
+
+		<-ctx.Done()
+
+		closeMsg := websocket.FormatCloseMessage(websocket.CloseNormalClosure, "connection closed")
+		clientConn.WriteMessage(websocket.CloseMessage, closeMsg)
+		serverConn.WriteMessage(websocket.CloseMessage, closeMsg)
+
+		clientConn.Close()
+		serverConn.Close()
+
+		wg.Wait()
 	})
 
 	r.Route("/auth", func(r chi.Router) {
