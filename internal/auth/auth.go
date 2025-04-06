@@ -32,8 +32,7 @@ func RenderLogin(w http.ResponseWriter, r *http.Request, templates *template.Tem
 		}
 	}
 
-	t := template.Must(template.ParseFiles("login.html"))
-	t.ExecuteTemplate(w, "login.html", nil)
+	templates.ExecuteTemplate(w, "login.html", nil)
 
 	return nil
 }
@@ -94,7 +93,7 @@ func Logout(w http.ResponseWriter, r *http.Request) error {
 		MaxAge: -1,
 	})
 
-	http.Redirect(w, r, "/login", http.StatusSeeOther)
+	http.Redirect(w, r, "/auth/login", http.StatusSeeOther)
 
 	return nil
 }
@@ -112,7 +111,7 @@ func RequireAuth(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		cookie, err := r.Cookie(sessionsCookieName)
 		if err != nil {
-			http.Redirect(w, r, "/login", http.StatusFound)
+			http.Redirect(w, r, "/auth/login", http.StatusFound)
 			return
 		}
 
@@ -121,7 +120,7 @@ func RequireAuth(next http.Handler) http.Handler {
 		sessionsMu.Unlock()
 
 		if !valid {
-			http.Redirect(w, r, "/login", http.StatusFound)
+			http.Redirect(w, r, "/auth/login", http.StatusFound)
 			return
 		}
 

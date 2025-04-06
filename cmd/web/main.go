@@ -25,7 +25,7 @@ func parseTemplates() error {
 
 	files := []string{
 		"./views/index.html",
-		"./views/error.html",
+		"./views/login.html",
 	}
 
 	templates, err = template.ParseFiles(files...)
@@ -37,17 +37,25 @@ func parseTemplates() error {
 }
 
 func main() {
-	logger = slog.New(slog.NewJSONHandler(os.Stdout, nil))
+	logger = slog.New(slog.NewTextHandler(os.Stdout, nil))
 	slog.SetDefault(logger)
 
 	err := godotenv.Load()
 	if err != nil {
-		log.Fatal("Error loading .env file")
+		logger.Error("error parsing .env", "err", err)
+		return
+	}
+
+	err = parseTemplates()
+	if err != nil {
+		logger.Error("error parsing templates", "err", err)
+		return
 	}
 
 	dsn := os.Getenv("DATABASE_URL")
 	if dsn == "" {
-		log.Fatal("missing env: DATABASE_URL")
+		logger.Error("database url does not exist in the environment variables")
+		return
 	}
 
 	// Connect to MongoDB
@@ -73,16 +81,24 @@ func main() {
 		t.Execute(w, nil)
 	})
 
-	r.Get("/login", func(w http.ResponseWriter, r *http.Request) {
-		handleError(auth.RenderLogin(w, r, templates), w, "login/render")
+	r.Route("/workflow", func(r chi.Router) {
+		r.Post("/create", func(w http.ResponseWriter, r *http.Request) {
+
+		})
 	})
 
-	r.Post("/login", func(w http.ResponseWriter, r *http.Request) {
-		handleError(auth.Login(w, r), w, "login")
-	})
+	r.Route("/auth", func(r chi.Router) {
+		r.Get("/login", func(w http.ResponseWriter, r *http.Request) {
+			handleError(auth.RenderLogin(w, r, templates), w, "login/render")
+		})
 
-	r.Get("/logout", func(w http.ResponseWriter, r *http.Request) {
-		handleError(auth.Logout(w, r), w, "logout")
+		r.Post("/login", func(w http.ResponseWriter, r *http.Request) {
+			handleError(auth.Login(w, r), w, "login")
+		})
+
+		r.Get("/logout", func(w http.ResponseWriter, r *http.Request) {
+			handleError(auth.Logout(w, r), w, "logout")
+		})
 	})
 
 	log.Println("Running web server http://localhost:3000")
