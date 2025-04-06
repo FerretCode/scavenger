@@ -13,7 +13,7 @@
 </head>
 
 <body>
-  <nav class="navbar bg-gray-800 shadow-sm border-b-2 border-black border-solid">
+  <nav class="navbar bg-gray-900 shadow-sm border-b-2 border-black border-solid">
     <div class="navbar-start">
       <div class="dropdown">
         <div tabindex="0" role="button" class="btn btn-ghost btn-circle">
@@ -39,7 +39,7 @@
 
   <div class="flex">
     <!-- left sidebar menu takes 1/4 of screen -->
-    <div class="w-1/4 bg-base-200 h-screen p-4">
+    <div class="w-1/4 bg-base-200 min-h-screen p-4">
       <ul class="menu bg-base-200 rounded-box w-full">
         <li><button class="menu-item" onclick="showContent('createWorkflow')">Create New Workflow</button></li>
         <!-- TEMPLATE: insert menu options for each saved workflow -->
@@ -62,9 +62,15 @@
 
               <button type="submit" class="btn btn-info text-lg">Submit Workflow</button>
             </div>
-
-            <div>
-
+            <div class="flex gap-8">
+              <div>
+                <div class="mb-8">
+                  <div class="pb-4">
+                    <label for="nameInput" class="text-xl" id="nameInputLabel"><b>Name Input</b></label>
+                  </div>
+                  <input type="text" class="input" name="nameInput" id="nameInput" placeholder="Type Here" pattern="^[a-z][a-z0-9_-]*$" required>
+                </div>
+              </div>
             </div>
 
             <div class="flex gap-8">
@@ -146,7 +152,7 @@
     </div>
 
     <!-- right sidebar menu takes 1/4 of screen -->
-    <div class="w-1/4 bg-base-200 h-screen p-4 overflow-y-auto p-8" id="fieldCardSection"></div>
+    <div class="w-1/4 bg-base-200 min-h-screen p-4 overflow-y-auto p-8" id="fieldCardSection"></div>
   </div>
 
   <!-- script to create a new form for adding a JSON field -->
@@ -254,6 +260,7 @@
     function showContent(workflowName) {
 
       let elemsObj = {
+        nameElem: document.getElementById('nameInput'),
         websiteElem: document.getElementById('websiteInput'),
         cronElem: document.getElementById('cronInput'),
         promptElem: document.getElementById('promptInput'),
@@ -262,7 +269,7 @@
         fieldDescInput: document.getElementById('fieldDescInput')
       }
 
-      console.log(workflowName);
+
 
     }
   </script>
