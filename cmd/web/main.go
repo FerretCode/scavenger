@@ -45,11 +45,6 @@ func parseTemplates() error {
 	return nil
 }
 
-type WorkFlow struct {
-	WorkFlowId          string `bson:"work_flow_id"`
-	ContainerServiceUri string `bson:"container_service_uri"`
-}
-
 func main() {
 	logger = slog.New(slog.NewTextHandler(os.Stdout, nil))
 	slog.SetDefault(logger)
@@ -230,37 +225,26 @@ func main() {
 		})
 	})
 
-	// workflowcollections.findOne()
-	// workflowcollections.findOne()
+	r.Get("/connect/{workflow_name}", func(w http.ResponseWriter, r *http.Request) {
+		// TODO: use API key middleware
 
-	// retriveing container id
-	// workFlowCollections = db.collections('workflows')
-	// var workflow := workflow{}
-	// id := req.
-	// filter := bson.d{'id':id}o
-	// res := workflowcollections.findOne(conteext param,filter,)
-	// workdflow = res.decode
-	r.Get("/connect/{work_flow_id}", func(w http.ResponseWriter, r *http.Request) {
-		//connect to proxy
-		workFlowId := chi.URLParam(r, "work_flow_id")
-		// 5000
-		filter := bson.D{{"id", workFlowId}}
-		res := client.Database("scavenger").Collection("workflows").FindOne(ctx, filter)
-		decodedWorkFlow := WorkFlow{}
+		workflowName := chi.URLParam(r, "workflow_name")
+		filter := bson.D{{"name", workflowName}}
+		res := db.Database("scavenger").Collection("workflows").FindOne(ctx, filter)
+		workflow := workflow.Workflow{}
 
 		if res.Err() != nil {
 			handleError(res.Err(), w, "connect")
 			return
 		}
-		//workfow is a structu which will be populated
 
-		err := res.Decode(&decodedWorkFlow)
+		err := res.Decode(&workflow)
 		if err != nil {
 			handleError(err, w, "connect")
 			return
 		}
 
-		proxy, err := connectingHostToUser(decodedWorkFlow.WorkFlowId)
+		proxy, err := proxyToUri(workflow.ServiceUri)
 		if err != nil {
 			handleError(err, w, "connect")
 			return
@@ -300,7 +284,7 @@ func handleError(err error, w http.ResponseWriter, svc string) {
 
 // taking the host req
 // creatign a reverse proxy using httputil
-func connectingHostToUser(hostString string) (*httputil.ReverseProxy, error) {
+func proxyToUri(hostString string) (*httputil.ReverseProxy, error) {
 	url, err := url.Parse(hostString)
 	if err != nil {
 		return nil, err
