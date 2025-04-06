@@ -217,7 +217,9 @@ func main() {
 	})
 
 	r.Route("/workflows", func(r chi.Router) {
-		r.With(auth.RequireAuth).Get("/", func(w http.ResponseWriter, r *http.Request) {
+		r.Use(auth.RequireAuth)
+
+		r.Get("/", func(w http.ResponseWriter, r *http.Request) {
 			handleError(templates.ExecuteTemplate(w, "workflows.html", mockWorkflows), w, "workflows/render")
 		})
 
@@ -265,12 +267,16 @@ func main() {
 			handleError(auth.Logout(w, r), w, "logout")
 		})
 
-		r.Get("/api", func(w http.ResponseWriter, r *http.Request) {
-			handleError(auth.RenderAPIKey(w, r, templates, nil), w, "api/render")
-		})
+		r.Route("/api", func(r chi.Router) {
+			r.Use(auth.RequireAuth)
 
-		r.Post("/api", func(w http.ResponseWriter, r *http.Request) {
-			handleError(auth.CreateAPIKey(w, r, db, templates, ctx), w, "api")
+			r.Get("/", func(w http.ResponseWriter, r *http.Request) {
+				handleError(auth.RenderAPIKey(w, r, templates, nil), w, "api/render")
+			})
+
+			r.Post("/", func(w http.ResponseWriter, r *http.Request) {
+				handleError(auth.CreateAPIKey(w, r, db, templates, ctx), w, "api")
+			})
 		})
 	})
 
