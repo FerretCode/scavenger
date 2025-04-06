@@ -1,11 +1,18 @@
 package auth
 
 import (
+	"context"
 	"crypto/rand"
+	"crypto/sha256"
 	"encoding/hex"
 	"html/template"
 	"net/http"
+	"os"
 	"sync"
+	"time"
+
+	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/v2/mongo"
 )
 
 const (
@@ -32,9 +39,7 @@ func RenderLogin(w http.ResponseWriter, r *http.Request, templates *template.Tem
 		}
 	}
 
-	templates.ExecuteTemplate(w, "login.html", nil)
-
-	return nil
+	return templates.ExecuteTemplate(w, "login.html", nil)
 }
 
 func Login(w http.ResponseWriter, r *http.Request) error {
@@ -52,7 +57,7 @@ func Login(w http.ResponseWriter, r *http.Request) error {
 	}
 
 	// Generate session token for authenticated user
-	token, err := generateSessionToken()
+	token, err := generateToken()
 	if err != nil {
 		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 		return nil
@@ -95,13 +100,44 @@ func Logout(w http.ResponseWriter, r *http.Request) error {
 	return nil
 }
 
-func generateSessionToken() (string, error) {
+func RenderAPIKey(w http.ResponseWriter, r *http.Request, templates *template.Template, data any) error {
+	return templates.ExecuteTemplate(w, "api.html", data)
+}
+
+func CreateAPIKey(w http.ResponseWriter, r *http.Request, db *mongo.Client, templates *template.Template, ctx context.Context) error {
+	t, err := generateToken()
+	if err != nil {
+		return err
+	}
+
+	b := hashToken(t)
+
+	d := bson.M{
+		"hash":      b,
+		"createdAt": time.Now(),
+	}
+
+	_, err = db.Database(os.Getenv("DATABASE_NAME")).Collection("api_keys").InsertOne(ctx, d)
+	if err != nil {
+		return err
+	}
+
+	return RenderAPIKey(w, r, templates, t)
+}
+
+// Generates a plaintext token
+func generateToken() (string, error) {
 	b := make([]byte, 32)
 	_, err := rand.Read(b)
 	if err != nil {
 		return "", err
 	}
 	return hex.EncodeToString(b), nil
+}
+
+func hashToken(plaintextToken string) []byte {
+	hash := sha256.Sum256([]byte(plaintextToken))
+	return hash[:]
 }
 
 func RequireAuth(next http.Handler) http.Handler {

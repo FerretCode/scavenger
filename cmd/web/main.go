@@ -34,6 +34,7 @@ func parseTemplates() error {
 		"./views/dashboard.html",
 		"./views/workflows.html",
 		"./views/login.html",
+		"./views/api.html",
 	}
 
 	templates, err = template.ParseFiles(files...)
@@ -220,7 +221,7 @@ func main() {
 		})
 
 		r.Post("/create", func(w http.ResponseWriter, r *http.Request) {
-			handleError(workflow.Create(w, r, db, runClient, &ctx), w, "workflow/create")
+			handleError(workflow.Create(w, r, db, runClient, ctx), w, "workflow/create")
 		})
 	})
 
@@ -235,6 +236,14 @@ func main() {
 
 		r.Get("/logout", func(w http.ResponseWriter, r *http.Request) {
 			handleError(auth.Logout(w, r), w, "logout")
+		})
+
+		r.Get("/api", func(w http.ResponseWriter, r *http.Request) {
+			handleError(auth.RenderAPIKey(w, r, templates, nil), w, "api/render")
+		})
+
+		r.Post("/api", func(w http.ResponseWriter, r *http.Request) {
+			handleError(auth.CreateAPIKey(w, r, db, templates, ctx), w, "api")
 		})
 	})
 

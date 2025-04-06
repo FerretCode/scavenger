@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="en-US" data-theme="dark">
+<head>
+    <title>API Key</title>
+    <link href="https://cdn.jsdelivr.net/npm/daisyui@5" rel="stylesheet" type="text/css" />
+    <link href="https://cdn.jsdelivr.net/npm/daisyui@5/themes.css" rel="stylesheet" type="text/css" />
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+</head>
+<body class="flex">
+    <div class="flex items-center justify-center h-screen w-screen">
+        <div class="bg-gray-800 rounded-box shadow-lg p-12">
+            <h1 class="text-2xl mb-8 font-bold">API Key</h1>
+            {{ with . }}
+                <div class="flex">
+                    <input id="api-key" type="text" value="{{ . }}" class="input input-bordered w-full max-w-xs" readonly />
+                    <button onclick="copyToClipboard()" class="btn btn-primary">
+                        Copy
+                    </button>
+                </div>
+                <p id="copy-result" class="pt-4"></p>
+                <script>
+                    function copyToClipboard() {
+                        const copyText = document.getElementById("api-key");
+                        navigator.clipboard.writeText(copyText.value)
+                        .then(() => {
+                            const res = document.getElementById("copy-result");
+                            res.textContent = "Copied to clipboard!";
+                        })
+                        .catch((err) => {
+                            console.error("Failed to copy: ", err);
+                        });
+                    }
+                </script>
+            {{ else }}
+                <form method="POST" action="/auth/api">
+                    <button class="btn" type="submit">Generate New Key</button>
+                </form>
+            {{ end }}
+        </div>
+    </div>
+</body>
+
+</html>
