@@ -152,7 +152,7 @@
     </div>
 
     <!-- right sidebar menu takes 1/4 of screen -->
-    <div class="w-1/4 bg-base-200 min-h-screen p-4 overflow-y-auto p-8" id="fieldCardSection"></div>
+    <div class="w-1/4 bg-base-200 h-screen p-4 overflow-y-auto p-8" id="fieldCardSection"></div>
   </div>
 
   <!-- script to create a new form for adding a JSON field -->
@@ -212,8 +212,7 @@
                 </span>
               </div>
             </div>
-        </div>
-      `
+            `
       fieldSection.appendChild(card);
 
       // add hidden input div filled with three hidden input elements
@@ -258,20 +257,61 @@
   <script>
     // Function to display dynamic content based on the selected menu item
     function showContent(workflowName) {
+      var numberFields = 0;
+      const fieldSection = document.getElementById('fieldCardSection');
+      fieldSection.innerHTML = "";
 
       let elemsObj = {
         nameElem: document.getElementById('nameInput'),
         websiteElem: document.getElementById('websiteInput'),
         cronElem: document.getElementById('cronInput'),
         promptElem: document.getElementById('promptInput'),
-        fieldNameElem: document.getElementById('fieldNameInput'),
-        fieldTypeInput: document.getElementById('fieldTypeInput'),
-        fieldDescInput: document.getElementById('fieldDescInput')
       }
       {{range .Workflows}}
       if (workflowName == "{{ .Name }}") {
         elemsObj.nameElem.value = `${workflowName}`
-        elemsObj.websiteElem = "{{ .URL }} "
+        elemsObj.websiteElem.value = "{{ .ServiceUri }}"
+        elemsObj.cronElem.value = "{{ .Cron }}"
+        elemsObj.promptElem.value = "{{ .Prompt }}"
+
+        // function to create a field card
+        function createFieldCard(name, type, desc) {
+          const card = document.createElement('div');
+          card.id = `field_${numberFields}`
+          card.innerHTML = `
+                  <div class="menu bg-base-200 rounded-box w-full fieldCard">
+                    <div class="bg-gray-800 p-4">
+                      <span class="flex mb-4 border-b-2 border-solid border-black p-2">
+                        <h3 class="text-md flex-col w-1/2"><b>Field Name</b></h3>
+                        <p class="flex-col w-1/2">
+                          "${name}"
+                        </p>
+                      </span>
+                      <span class="flex mb-4 border-b-2 border-solid border-black p-2">
+                        <h3 class="text-md flex-col w-1/2"><b>Field Type</b></h3>
+                        <p class="flex-col w-1/2">
+                          "${type}"
+                        </p>
+                      </span>
+                      <span class="flex mb-4 border-b-2 border-solid border-black p-2">
+                        <h3 class="text-md flex-col w-1/2"><b>Field Description</b></h3>
+                        <p class="flex-col w-1/2">
+                          "${desc}"
+                        </p>
+                      </span>
+                      <span class="mb-4 flex justify-center items-center">
+                        <button type="button" class="btn btn-error ml-1 mb-4 mt-4 text-md" onclick="fieldRemove('field_${numberFields}')">Remove This JSON Field</button>
+                      </span>
+                    </div>
+                  </div>
+                  `
+          fieldSection.appendChild(card);
+          numberFields++
+        }
+        // create cards for each field
+        {{range .Schema.Properties}}
+        createFieldCard("{{ .Name }}", "{{ .Type }}", "{{ .Desc }}")
+        {{end}}
       }
       {{end}}
 
