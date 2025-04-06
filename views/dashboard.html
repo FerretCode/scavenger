@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="en-US" data-theme="dark">
+
+<head>
+  <meta charset="utf-8" name="viewport" content="width=device-width, initial-scale=1">
+  <title>Home</title>
+
+  <!-- DaisyUI CSS library -->
+  <link href="https://cdn.jsdelivr.net/npm/daisyui@5" rel="stylesheet" type="text/css" />
+</head>
+
+<body>
+  <nav class="navbar bg-gray-800 shadow-sm border-b-2 border-black border-solid">
+    <div class="navbar-start">
+      <div class="dropdown">
+        <div tabindex="0" role="button" class="btn btn-ghost btn-circle">
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h7" />
+          </svg>
+        </div>
+        <ul tabindex="0" class="menu menu-sm dropdown-content bg-base-100 rounded-box z-1 mt-3 w-52 p-2 shadow">
+          <li><a href="/">Dashboard</a></li>
+          <li><a href="/workflows">Portfolio</a></li>
+        </ul>
+      </div>
+    </div>
+    <div class="navbar-center">
+      <h1 class="text-3xl"><b>Scavenger</b></h1>
+    </div>
+    <div class="navbar-end">
+      <a class="btn bg-gray-600 shadow-lg mr-4" href="/auth/logout">
+        Logout
+      </a>
+    </div>
+  </nav>
+
+
+  <!-- script to create a new form for adding a JSON field -->
+  <script>
+    var numberFields = 0;
+
+    function fieldRemove(id) {
+      const el = document.getElementById(id);
+      if (el) {
+        el.remove();
+      }
+    }
+
+    function fieldAdd() {
+      const fieldName = document.getElementById('fieldNameInput').value;
+      const fieldType = document.getElementById('fieldTypeInput').value;
+      const fieldDesc = document.getElementById('fieldDescInput').value;
+
+      if (fieldName == "" || fieldType == "" || fieldDesc == "") {
+        alert("missing field information");
+        return;
+      }
+
+      const fieldSection = document.getElementById('fieldCardSection');
+      const card = document.createElement('div');
+      card.id = `field_${numberFields}`
+      card.innerHTML = `
+            <div class="menu bg-base-200 rounded-box w-full fieldCard">
+              <div class="bg-gray-800 p-4">
+                <span class="flex mb-4 border-b-2 border-solid border-black p-2">
+                  <h3 class="text- flex-col w-1/2"><b>Field Name</b></h3>
+                  <p class="flex-col w-1/2">
+                    "${fieldName}"
+                  </p>
+                  <input type="hidden" name="fieldName_${numberFields}" value="${fieldName}">
+                </span>
+                <span class="flex mb-4 border-b-2 border-solid border-black p-2">
+                  <h3 class="text- flex-col w-1/2"><b>Field Type</b></h3>
+                  <p class="flex-col w-1/2">
+                    "${fieldType}"
+                  </p>
+                  <input type="hidden" name="fieldType_${numberFields}" value="${fieldType}">
+                </span>
+                <span class="flex mb-4 border-b-2 border-solid border-black p-2">
+                  <h3 class="text- flex-col w-1/2"><b>Field Description</b></h3>
+                  <p class="flex-col w-1/2">
+                    "${fieldDesc}"
+                  </p>
+                  <input type="hidden" name="fieldDesc_${numberFields}" value="${fieldDesc}">
+                </span>
+                <span class="mb-4 flex justify-center items-center">
+                  <button type="button" class="btn btn-error ml-1 mb-4 mt-4 text-" 
+                  onclick="fieldRemove('field_${numberFields}')">Remove This JSON Field</button>
+                </span>
+              </div>
+            </div>
+        </div>
+      `
+      fieldSection.appendChild(card);
+
+      // Ckear field values
+      document.getElementById('fieldNameInput').value = "";
+      document.getElementById('fieldTypeInput').value = "";
+      document.getElementById('fieldDescInput').value = "";
+
+      document.getElementById("numberFields").value = numberFields;
+      numberFields++;
+    }
+  </script>
+
+  <!-- bring in the tailwind stuff -->
+  <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+
+</body>
+
+</html>

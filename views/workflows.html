@@ -11,7 +11,19 @@
 
 <body>
   <nav class="navbar bg-gray-800 shadow-sm border-b-2 border-black border-solid">
-    <div class="navbar-start"></div>
+    <div class="navbar-start">
+      <div class="dropdown">
+        <div tabindex="0" role="button" class="btn btn-ghost btn-circle">
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h7" />
+          </svg>
+        </div>
+        <ul tabindex="0" class="menu menu-sm dropdown-content bg-base-100 rounded-box z-1 mt-3 w-52 p-2 shadow">
+          <li><a href="/">Dashboard</a></li>
+          <li><a href="/workflows">Portfolio</a></li>
+        </ul>
+      </div>
+    </div>
     <div class="navbar-center">
       <h1 class="text-3xl"><b>Scavenger</b></h1>
     </div>
@@ -67,49 +79,51 @@
                   <div class="pb-4">
                     <label for="cronInput" class="text-xl" id="cronInputLabel"><b>Cron String</b></label>
                   </div>
-                  <input type="text" class="input" name="cronInput" id="cronInput" placeholder="Type Here" required>
+                  <input type="text" class="input" name="cronInput" id="cronInput" placeholder="Type Here" pattern="/^(((\*|\d{1,2})(-\d{1,2})?(\/\d{1,2})?)(,(\d{1,2})(-\d{1,2})?(\/\d{1,2})?)*)\s){4}((\*|\d{1,2})(-\d{1,2})?(\/\d{1,2})?)(,(\d{1,2})(-\d{1,2})?(\/\d{1,2})?)*)$/" " required>
                 </div>
               </div>
 
-              <div class="mb-8 w-1/2">
-                <div class="pb-4">
-                  <label for="promptInput" class="text-xl" id="promptInputLabel"><b>Scraping Prompt</b></label>
+              <div class=" mb-8 w-1/2">
+                  <div class="pb-4">
+                    <label for="promptInput" class="text-xl" id="promptInputLabel"><b>Scraping Prompt</b></label>
+                  </div>
+                  <textarea rows="6" cols="50" class="textarea p-2" name="promptInput" id="promptInput" placeholder="Enter your scraping prompt here..."></textarea>
                 </div>
-                <textarea rows="6" cols="50" class="textarea p-2" name="promptInput" id="promptInput" placeholder="Enter your scraping prompt here..."></textarea>
               </div>
             </div>
           </div>
 
-          <div class="mt-8">
-            <div id="fieldAddition">
-              <h3 class="text-xl mb-4 text-yellow-100"><b>Add a JSON Field</b></h3>
-
-              <div class="flex gap-8">
-                <div class="w-1/2">
-                  <div class="mb-4 flex flex-col">
-                    <label for="fieldNameInput" class="text-xl" id="fieldNameInputLabel"><b>Field Name</b></label>
-                    <input type="text" class="input my-4" id="fieldNameInput" placeholder="Type Here" required>
-                    <!-- <textarea rows="4" cols="50" class="p-2" placeholder="Enter your field name here..."></textarea> -->
-                  </div>
-
-                  <div class="flex flex-col">
-                    <label for="fieldTypeInput" class="text-xl" id="fieldTypeInputLabel"><b>Field Type</b></label>
-                    <input type="text" class="input my-4" id="fieldTypeInput" placeholder="ex. int, string, etc." required>
-                    <!-- <textarea rows="4" cols="50" class="p-2" placeholder="Enter your field type here... (ex. int, string, etc.)"></textarea> -->
-                  </div>
-                </div>
-
-                <div class="mb-4 w-1/2 flex flex-col">
-                  <label for="fieldDescInput" class="text-xl" id="fieldDescInputLabel"><b>Field Description</b></label>
-                  <textarea rows="6" cols="150" class="textarea p-2 my-4" id="fieldDescInput" placeholder="Enter your field description here..."></textarea>
-                </div>
-              </div>
-
-              <button type="button" class="btn btn-success ml-1 mb-4 mt-4 text-lg" onclick="fieldAdd()">Add Field</button>
-            </div>
-          </div>
-        </div>
+          <div id="hiddenInputsContainer"></div>
       </form>
+
+      <div class="mt-8">
+        <div id="fieldAddition">
+          <h3 class="text-xl mb-4 text-yellow-100"><b>Add a JSON Field</b></h3>
+
+          <div class="flex gap-8">
+            <div class="w-1/2">
+              <div class="mb-4 flex flex-col">
+                <label for="fieldNameInput" class="text-xl" id="fieldNameInputLabel"><b>Field Name</b></label>
+                <input type="text" class="input my-4" id="fieldNameInput" placeholder="Type Here">
+                <!-- <textarea rows="4" cols="50" class="p-2" placeholder="Enter your field name here..."></textarea> -->
+              </div>
+
+              <div class="flex flex-col">
+                <label for="fieldTypeInput" class="text-xl" id="fieldTypeInputLabel"><b>Field Type</b></label>
+                <input type="text" class="input my-4" id="fieldTypeInput" placeholder="ex. int, string, etc.">
+                <!-- <textarea rows="4" cols="50" class="p-2" placeholder="Enter your field type here... (ex. int, string, etc.)"></textarea> -->
+              </div>
+            </div>
+
+            <div class="mb-4 w-1/2 flex flex-col">
+              <label for="fieldDescInput" class="text-xl" id="fieldDescInputLabel"><b>Field Description</b></label>
+              <textarea rows="6" cols="150" class="textarea p-2 my-4" id="fieldDescInput" placeholder="Enter your field description here..."></textarea>
+            </div>
+          </div>
+
+          <button type="button" class="btn btn-success ml-1 mb-4 mt-4 text-lg" onclick="fieldAdd()">Add Field</button>
+        </div>
+      </div>
     </div>
 
     <!-- right sidebar menu takes 1/4 of screen -->
@@ -125,6 +139,12 @@
       if (el) {
         el.remove();
       }
+
+      // remove hidden element
+      const hiddenEl = document.getElementById(`${id}_hidden`);
+      if (hiddenEl) {
+        hiddenEl.remove();
+      }
     }
 
     function fieldAdd() {
@@ -133,6 +153,7 @@
       const fieldDesc = document.getElementById('fieldDescInput').value;
 
       if (fieldName == "" || fieldType == "" || fieldDesc == "") {
+        console.log("OGGA BOOGA");
         alert("missing field information");
         return;
       }
@@ -148,21 +169,18 @@
                   <p class="flex-col w-1/2">
                     "${fieldName}"
                   </p>
-                  <input type="hidden" name="fieldName_${numberFields}" value="${fieldName}">
                 </span>
                 <span class="flex mb-4 border-b-2 border-solid border-black p-2">
                   <h3 class="text- flex-col w-1/2"><b>Field Type</b></h3>
                   <p class="flex-col w-1/2">
                     "${fieldType}"
                   </p>
-                  <input type="hidden" name="fieldType_${numberFields}" value="${fieldType}">
                 </span>
                 <span class="flex mb-4 border-b-2 border-solid border-black p-2">
                   <h3 class="text- flex-col w-1/2"><b>Field Description</b></h3>
                   <p class="flex-col w-1/2">
                     "${fieldDesc}"
                   </p>
-                  <input type="hidden" name="fieldDesc_${numberFields}" value="${fieldDesc}">
                 </span>
                 <span class="mb-4 flex justify-center items-center">
                   <button type="button" class="btn btn-error ml-1 mb-4 mt-4 text-" 
@@ -174,6 +192,31 @@
       `
       fieldSection.appendChild(card);
 
+      // add hidden input div filled with three hidden input elements
+      const hiddenContainer = document.getElementById('hiddenInputsContainer');
+      const hiddenDiv = document.createElement('div')
+      hiddenDiv.id = `field_${numberFields}_hidden`
+      hiddenContainer.appendChild(hiddenDiv)
+
+      const fieldNameHidden = document.createElement('input');
+      fieldNameHidden.type = 'hidden';
+      fieldNameHidden.name = `fieldName_${numberFields}`;
+      fieldNameHidden.value = fieldName;
+
+      const fieldTypeHidden = document.createElement('input');
+      fieldTypeHidden.type = 'hidden';
+      fieldTypeHidden.name = `fieldType_${numberFields}`;
+      fieldTypeHidden.value = fieldType;
+
+      const fieldDescHidden = document.createElement('input');
+      fieldDescHidden.type = 'hidden';
+      fieldDescHidden.name = `fieldDesc_${numberFields}`;
+      fieldDescHidden.value = fieldDesc;
+
+      hiddenDiv.appendChild(fieldNameHidden)
+      hiddenDiv.appendChild(fieldTypeHidden)
+      hiddenDiv.appendChild(fieldDescHidden)
+
       // Ckear field values
       document.getElementById('fieldNameInput').value = "";
       document.getElementById('fieldTypeInput').value = "";
@@ -181,6 +224,8 @@
 
       document.getElementById("numberFields").value = numberFields;
       numberFields++;
+
+      document
     }
   </script>
 
