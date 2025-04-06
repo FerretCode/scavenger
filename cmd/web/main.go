@@ -99,9 +99,9 @@ func main() {
 	}()
 
 	// Ping the database
-	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+	pingCtx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
 	defer cancel()
-	_ = db.Ping(ctx, readpref.Primary())
+	_ = db.Ping(pingCtx, readpref.Primary())
 
 	// CODE STARTS HERE
 	r := chi.NewRouter()
