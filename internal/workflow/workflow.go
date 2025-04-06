@@ -42,24 +42,22 @@ type Workflow struct {
 	Schema     Schema `json:"schema"`
 }
 
-
-func Delete (w http.ResponseWriter, r *http.Request, db *mongo.Client, runClient *run.ServicesClient, ctx context.Context ) error {
+func Delete(w http.ResponseWriter, r *http.Request, db *mongo.Client, runClient *run.ServicesClient, ctx context.Context) error {
 	err := r.ParseForm()
-	if err != nil{
+	if err != nil {
 		return err
 	}
 
 	workflowName := r.PostForm.Get("workflowName")
- 
+
 	workflow := Workflow{}
 	workflow.Name = workflowName
 
-	bsonFilter := bson.D{{Key:"workflowName",Value: workflowName},}
+	bsonFilter := bson.D{{Key: "workflowName", Value: workflowName}}
 	fmt.Println(bsonFilter)
-	
 
-	_, err = db.Database(os.Getenv("DATABASE_NAME")).Collection("workflows").DeleteOne(ctx,bsonFilter)
-	if err != nil{
+	_, err = db.Database(os.Getenv("DATABASE_NAME")).Collection("workflows").DeleteOne(ctx, bsonFilter)
+	if err != nil {
 		return err
 	}
 
@@ -219,7 +217,6 @@ func Create(w http.ResponseWriter, r *http.Request, db *mongo.Client, runClient 
 		return err
 	}
 
-  
 	workflowName = strings.ReplaceAll(strings.ToLower(workflowName), " ", "_")
 	workflow := Workflow{
 		Name:       workflowName,
@@ -233,6 +230,8 @@ func Create(w http.ResponseWriter, r *http.Request, db *mongo.Client, runClient 
 	if err != nil {
 		return err
 	}
+
+	http.Redirect(w, r, "/", http.StatusSeeOther)
 
 	return nil
 }
