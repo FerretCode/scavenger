@@ -1,3 +1,4 @@
+import os
 import asyncio
 import websockets
 import json
@@ -6,7 +7,7 @@ from datetime import datetime
 async def websocket_client():
     uri = "ws://127.0.0.1:3000/connect/debt"
     headers = {
-        "X-API-Key": "bb2c1ab22cda6466b686b1ab2e35cb63570163e6e063299cfb438ef1226d3318",
+        "X-API-Key": os.environ['API_KEY'],
     }
 
     async with websockets.connect(uri, additional_headers=headers) as websocket:        
