@@ -43,7 +43,10 @@
       <ul class="menu bg-base-200 rounded-box w-full">
         <li><button class="menu-item" onclick="showContent('createWorkflow')">Create New Workflow</button></li>
         <!-- TEMPLATE: insert menu options for each saved workflow -->
-        <li><button class="menu-item" onclick="showContent('example')">Example</button></li>
+        {{range .Workflows}}
+        <li><button class="menu-item" onclick="showContent('{{ .Name }}')">
+            {{ .Name }}</button></li>
+        {{end}}
       </ul>
     </div>
 
@@ -58,6 +61,10 @@
               <h2 class="text-2xl font-bold text-yellow-200">Create Your Scraping Workflow</h2>
 
               <button type="submit" class="btn btn-info text-lg">Submit Workflow</button>
+            </div>
+
+            <div>
+
             </div>
 
             <div class="flex gap-8">
@@ -245,7 +252,6 @@
   <script>
     // Function to display dynamic content based on the selected menu item
     function showContent(workflowName) {
-      const contentArea = document.getElementById('contentArea');
 
       let elemsObj = {
         websiteElem: document.getElementById('websiteInput'),
@@ -255,6 +261,9 @@
         fieldTypeInput: document.getElementById('fieldTypeInput'),
         fieldDescInput: document.getElementById('fieldDescInput')
       }
+
+      console.log(workflowName);
+
     }
   </script>
 
