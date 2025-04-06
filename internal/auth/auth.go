@@ -4,12 +4,15 @@ import (
 	"context"
 	"crypto/rand"
 	"crypto/sha256"
+	"crypto/subtle"
+	"encoding/base64"
 	"encoding/hex"
+	"fmt"
 	"html/template"
+	"log/slog"
 	"net/http"
 	"os"
 	"sync"
-	"time"
 
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/v2/mongo"
@@ -25,6 +28,10 @@ var (
 	sessionsMu sync.Mutex
 	sessions   = make(map[string]bool) // map[sessionToken]isAuthenticated
 )
+
+type ApiKey struct {
+	Hash string `json:"hash"`
+}
 
 func RenderLogin(w http.ResponseWriter, r *http.Request, templates *template.Template) error {
 	cookie, err := r.Cookie(sessionsCookieName)
@@ -111,13 +118,13 @@ func CreateAPIKey(w http.ResponseWriter, r *http.Request, db *mongo.Client, temp
 	}
 
 	b := hashToken(t)
+	encoded := base64.StdEncoding.EncodeToString(b)
 
-	d := bson.M{
-		"hash":      b,
-		"createdAt": time.Now(),
+	apiKey := ApiKey{
+		Hash: encoded,
 	}
 
-	_, err = db.Database(os.Getenv("DATABASE_NAME")).Collection("api_keys").InsertOne(ctx, d)
+	_, err = db.Database(os.Getenv("DATABASE_NAME")).Collection("api_keys").InsertOne(ctx, apiKey)
 	if err != nil {
 		return err
 	}
@@ -138,6 +145,51 @@ func generateToken() (string, error) {
 func hashToken(plaintextToken string) []byte {
 	hash := sha256.Sum256([]byte(plaintextToken))
 	return hash[:]
+}
+
+func RequireAPIKey(ctx context.Context, db *mongo.Client, logger *slog.Logger) func(http.Handler) http.Handler {
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			apiKey := r.Header.Get("X-API-Key")
+
+			hash := hashToken(apiKey)
+
+			filter := bson.D{{"hash", hash}}
+
+			res := db.Database("scavenger").Collection("api_keys").FindOne(ctx, filter)
+
+			if res.Err() != nil {
+				logger.Error("error fetching api key from database", "err", res.Err())
+				http.Error(w, "error authenticating your request", http.StatusInternalServerError)
+				return
+			}
+
+			key := ApiKey{}
+			fmt.Println(key.Hash)
+
+			fmt.Printf("%T\n", key.Hash)
+
+			err := res.Decode(&key)
+			if err != nil {
+				logger.Error("error fetching api key from database", "err", res.Err())
+				http.Error(w, "error authenticating your request", http.StatusInternalServerError)
+				return
+			}
+
+			comparisonHash, err := base64.StdEncoding.DecodeString(key.Hash)
+			if err != nil {
+				logger.Error("error fetching api key from database", "err", res.Err())
+				http.Error(w, "error authenticating your request", http.StatusInternalServerError)
+				return
+			}
+
+			comparisonResult := subtle.ConstantTimeCompare(hash, comparisonHash)
+			if comparisonResult != 0 {
+				http.Error(w, "incorrect api key", http.StatusUnauthorized)
+				return
+			}
+		})
+	}
 }
 
 func RequireAuth(next http.Handler) http.Handler {
