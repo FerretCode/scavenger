@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"math/rand"
 	"net/http"
 	"os"
 	"strconv"
@@ -11,9 +12,11 @@ import (
 
 	run "cloud.google.com/go/run/apiv2"
 	"cloud.google.com/go/run/apiv2/runpb"
-	"github.com/google/uuid"
 	"go.mongodb.org/mongo-driver/v2/mongo"
 )
+
+const serviceIDCharset = "abcdefghijklmnopqrstuvwxyz0123456789"
+const maxServiceIDLength = 49
 
 type Field struct {
 	Name string `json:"title"`
@@ -35,6 +38,9 @@ func Create(w http.ResponseWriter, r *http.Request, db *mongo.Client, runClient 
 		return err
 	}
 
+	fmt.Println("All form data:", r.PostForm)
+	fmt.Println("All form data:", r.Form)
+
 	website := r.PostForm.Get("websiteInput")
 	cron := r.PostForm.Get("cronInput")
 	prompt := r.PostForm.Get("promptInput")
@@ -45,10 +51,13 @@ func Create(w http.ResponseWriter, r *http.Request, db *mongo.Client, runClient 
 		return err
 	}
 
-	var schema Schema
+	schema := Schema{
+		Type:       "object",
+		Title:      "Generated Schema",
+		Properties: make(map[string]Field),
+	}
 
 	for i := 0; i < fieldCounter; i++ {
-
 		fieldName := r.PostForm.Get(fmt.Sprintf("fieldName_%d", i))
 		fieldType := r.PostForm.Get(fmt.Sprintf("fieldType_%d", i))
 		fieldDesc := r.PostForm.Get(fmt.Sprintf("fieldDesc_%d", i))
@@ -68,6 +77,7 @@ func Create(w http.ResponseWriter, r *http.Request, db *mongo.Client, runClient 
 		schemaFieldName := strings.ReplaceAll(strings.ToLower(fieldName), " ", "_")
 
 		schema.Properties[schemaFieldName] = field
+		schema.Required = append(schema.Required, schemaFieldName)
 	}
 
 	schemaString, err := json.Marshal(schema)
@@ -76,8 +86,8 @@ func Create(w http.ResponseWriter, r *http.Request, db *mongo.Client, runClient 
 	}
 
 	createServiceRequest := &runpb.CreateServiceRequest{
-		Parent:    fmt.Sprintf("projects/%s/location/%s", os.Getenv("PROJECT_ID"), os.Getenv("GCP_LOCATION")),
-		ServiceId: uuid.NewString(),
+		Parent:    fmt.Sprintf("projects/%s/locations/%s", os.Getenv("GCP_PROJECT_ID"), os.Getenv("GCP_LOCATION")),
+		ServiceId: generateServiceID(),
 		Service: &runpb.Service{
 			Template: &runpb.RevisionTemplate{
 				Containers: []*runpb.Container{
@@ -139,4 +149,30 @@ func Create(w http.ResponseWriter, r *http.Request, db *mongo.Client, runClient 
 	fmt.Println(service.Uri)
 
 	return nil
+}
+
+func generateServiceID() string {
+	length := 20 + rand.Intn(maxServiceIDLength-20)
+
+	var sb strings.Builder
+
+	sb.WriteByte('a' + byte(rand.Intn(26)))
+
+	for i := 1; i < length-1; i++ {
+		if rand.Float64() < 0.15 {
+			sb.WriteByte('-')
+		} else {
+			sb.WriteByte(serviceIDCharset[rand.Intn(len(serviceIDCharset))])
+		}
+	}
+
+	for {
+		lastChar := serviceIDCharset[rand.Intn(len(serviceIDCharset))]
+		if lastChar != '-' {
+			sb.WriteByte(lastChar)
+			break
+		}
+	}
+
+	return sb.String()
 }

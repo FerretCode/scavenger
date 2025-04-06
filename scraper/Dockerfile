@@ -26,5 +26,7 @@ COPY . .
 # playwright install
 RUN python -m playwright install --with-deps chromium
 
+EXPOSE 8765
+
 ENV PYTHONUNBUFFERED=1
 CMD ["python", "main.py"]
