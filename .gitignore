@@ -23,5 +23,6 @@ go.work.sum
 
 # secrets
 .env
+.venv/
 scraper/.env
 credentials.json
