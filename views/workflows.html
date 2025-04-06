@@ -7,6 +7,9 @@
 
   <!-- DaisyUI CSS library -->
   <link href="https://cdn.jsdelivr.net/npm/daisyui@5" rel="stylesheet" type="text/css" />
+
+  <!-- bring in the tailwind stuff -->
+  <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
 </head>
 
 <body>
@@ -20,7 +23,7 @@
         </div>
         <ul tabindex="0" class="menu menu-sm dropdown-content bg-base-100 rounded-box z-1 mt-3 w-52 p-2 shadow">
           <li><a href="/">Dashboard</a></li>
-          <li><a href="/workflows">Portfolio</a></li>
+          <li><a href="/workflows">Workflows</a></li>
         </ul>
       </div>
     </div>
@@ -82,21 +85,21 @@
                   <div class="pb-4">
                     <label for="cronInput" class="text-xl" id="cronInputLabel"><b>Cron String</b></label>
                   </div>
-                  <input type="text" class="input" name="cronInput" id="cronInput" placeholder="Type Here" pattern="/^(((\*|\d{1,2})(-\d{1,2})?(\/\d{1,2})?)(,(\d{1,2})(-\d{1,2})?(\/\d{1,2})?)*)\s){4}((\*|\d{1,2})(-\d{1,2})?(\/\d{1,2})?)(,(\d{1,2})(-\d{1,2})?(\/\d{1,2})?)*)$/" " required>
+                  <input type="text" class="input" name="cronInput" id="cronInput" placeholder="Type Here" pattern="/^(((\*|\d{1,2})(-\d{1,2})?(\/\d{1,2})?)(,(\d{1,2})(-\d{1,2})?(\/\d{1,2})?)*)\s){4}((\*|\d{1,2})(-\d{1,2})?(\/\d{1,2})?)(,(\d{1,2})(-\d{1,2})?(\/\d{1,2})?)*)$/" required>
                 </div>
               </div>
 
               <div class=" mb-8 w-1/2">
-                  <div class="pb-4">
-                    <label for="promptInput" class="text-xl" id="promptInputLabel"><b>Scraping Prompt</b></label>
-                  </div>
-                  <textarea rows="6" cols="50" class="textarea p-2" name="promptInput" id="promptInput" placeholder="Enter your scraping prompt here..."></textarea>
+                <div class="pb-4">
+                  <label for="promptInput" class="text-xl" id="promptInputLabel"><b>Scraping Prompt</b></label>
                 </div>
+                <textarea rows="6" cols="50" class="textarea p-2" name="promptInput" id="promptInput" placeholder="Enter your scraping prompt here..."></textarea>
               </div>
             </div>
           </div>
+        </div>
 
-          <div id="hiddenInputsContainer"></div>
+        <div id="hiddenInputsContainer"></div>
       </form>
 
       <div class="mt-8">
@@ -245,9 +248,6 @@
       }
     }
   </script>
-
-  <!-- bring in the tailwind stuff -->
-  <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
 
 </body>
 

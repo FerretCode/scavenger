@@ -147,16 +147,14 @@ func main() {
 	}
 
 	r.With(auth.RequireAuth).Get("/", func(w http.ResponseWriter, r *http.Request) {
-		t := template.Must(template.ParseFiles("views/dashboard.html"))
-		t.Execute(w, mockWorkflows)
+		handleError(templates.ExecuteTemplate(w, "dashboard.html", mockWorkflows), w, "dashboard/render")
 	})
 
-	r.With(auth.RequireAuth).Get("/workflows", func(w http.ResponseWriter, r *http.Request) {
-		t := template.Must(template.ParseFiles("views/workflows.html"))
-		t.Execute(w, nil)
-	})
+	r.Route("/workflows", func(r chi.Router) {
+		r.With(auth.RequireAuth).Get("/", func(w http.ResponseWriter, r *http.Request) {
+			handleError(templates.ExecuteTemplate(w, "workflows.html", mockWorkflows), w, "workflows/render")
+		})
 
-	r.Route("/workflow", func(r chi.Router) {
 		r.Post("/create", func(w http.ResponseWriter, r *http.Request) {
 			handleError(workflow.Create(w, r, db, runClient, &ctx), w, "workflow/create")
 		})
