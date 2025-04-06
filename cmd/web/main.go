@@ -43,6 +43,34 @@ func parseTemplates() error {
 	return nil
 }
 
+func getRunningWorkflows() int {
+	return 1
+}
+
+func getDocumentScraped() int {
+	return 2
+}
+
+func getActiveClients() int {
+	return 3
+}
+
+type topDashData struct {
+	RunningWorkflows  int
+	DocumentsScraped  int
+	ClientConnections int
+}
+
+func getTopDashData() topDashData {
+	dashboardDataObj := topDashData{
+		RunningWorkflows:  getRunningWorkflows(),
+		DocumentsScraped:  getDocumentScraped(),
+		ClientConnections: getActiveClients(),
+	}
+
+	return dashboardDataObj
+}
+
 func main() {
 	logger = slog.New(slog.NewTextHandler(os.Stdout, nil))
 	slog.SetDefault(logger)
@@ -114,7 +142,8 @@ func main() {
 	}
 
 	type dashboardData struct {
-		Workflows []workflows
+		Workflows   []workflows
+		TopCardData topDashData
 	}
 
 	mockWorkflows := dashboardData{
@@ -144,6 +173,7 @@ func main() {
 				Prompt: "Run the fourth workflow every evening at 6 PM",
 			},
 		},
+		TopCardData: getTopDashData(),
 	}
 
 	r.With(auth.RequireAuth).Get("/", func(w http.ResponseWriter, r *http.Request) {
