@@ -14,13 +14,18 @@ import (
 	"text/template"
 	"time"
 
+	run "cloud.google.com/go/run/apiv2"
+	secretmanager "cloud.google.com/go/secretmanager/apiv1"
 	"github.com/ferretcode/scavenger/internal/auth"
+	"github.com/ferretcode/scavenger/internal/dashboard"
+	"github.com/ferretcode/scavenger/internal/workflow"
 	"github.com/go-chi/chi/v5"
 	"github.com/joho/godotenv"
 	"go.mongodb.org/mongo-driver/v2/bson"
 	"go.mongodb.org/mongo-driver/v2/mongo"
 	"go.mongodb.org/mongo-driver/v2/mongo/options"
 	"go.mongodb.org/mongo-driver/v2/mongo/readpref"
+	"google.golang.org/api/option"
 )
 
 var templates *template.Template
@@ -30,7 +35,8 @@ func parseTemplates() error {
 	var err error
 
 	files := []string{
-		"./views/index.html",
+		"./views/dashboard.html",
+		"./views/workflows.html",
 		"./views/login.html",
 	}
 
@@ -51,6 +57,8 @@ func main() {
 	logger = slog.New(slog.NewTextHandler(os.Stdout, nil))
 	slog.SetDefault(logger)
 
+	ctx := context.Background()
+
 	err := godotenv.Load()
 	if err != nil {
 		logger.Error("error parsing .env", "err", err)
@@ -69,32 +77,159 @@ func main() {
 		return
 	}
 
-	// Connect to MongoDB
-	client, err := mongo.Connect(options.Client().ApplyURI(dsn))
+	if _, err = os.Stat("./credentials.json"); err != nil {
+		logger.Error("error parsing credentials file", "err", err)
+		return
+	}
+
+	secretManagerClient, err := secretmanager.NewClient(ctx, option.WithCredentialsFile("./credentials.json"))
 	if err != nil {
-		log.Fatal(err)
+		logger.Error("error using credentials file", "err", err)
+		return
+	}
+	defer secretManagerClient.Close()
+	_ = secretManagerClient
+
+	runClient, err := run.NewServicesClient(ctx, option.WithCredentialsFile("./credentials.json"))
+	if err != nil {
+		logger.Error("error creating google run client", "err", err)
+		return
+	}
+
+	// Connect to MongoDB
+	db, err := mongo.Connect(options.Client().ApplyURI(dsn))
+	if err != nil {
+		logger.Error("error connecting to mongodb database", "err", err)
+		return
 	}
 	defer func() {
-		if err = client.Disconnect(context.Background()); err != nil {
+		if err = db.Disconnect(context.Background()); err != nil {
 			panic(err)
 		}
 	}()
 
 	// Ping the database
-	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+	pingCtx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
 	defer cancel()
-	_ = client.Ping(ctx, readpref.Primary())
+	_ = db.Ping(pingCtx, readpref.Primary())
 
+	// CODE STARTS HERE
 	r := chi.NewRouter()
 
+	mockWorkflows := dashboard.DashboardData{
+		Workflows: []workflow.Workflow{
+			{
+				Name:       "Workflow 1",
+				ServiceUri: "http://example.com/workflow1",
+				Cron:       "0 0 * * *",
+				Prompt:     "Run the first workflow every midnight",
+				Schema: workflow.Schema{
+					Title: "Workflow 1 Schema",
+					Type:  "object",
+					Properties: map[string]workflow.Field{
+						"field1": {
+							Name: "Field 1",
+							Type: "string",
+							Desc: "The first field for Workflow 1",
+						},
+						"field2": {
+							Name: "Field 2",
+							Type: "integer",
+							Desc: "The second field for Workflow 1",
+						},
+					},
+					Required: []string{"field1"},
+				},
+			},
+			{
+				Name:       "Workflow 2",
+				ServiceUri: "http://example.com/workflow2",
+				Cron:       "0 6 * * *",
+				Prompt:     "Run the second workflow every morning at 6 AM",
+				Schema: workflow.Schema{
+					Title: "Workflow 2 Schema",
+					Type:  "object",
+					Properties: map[string]workflow.Field{
+						"field1": {
+							Name: "Field 1",
+							Type: "string",
+							Desc: "The first field for Workflow 2",
+						},
+						"field2": {
+							Name: "Field 2",
+							Type: "boolean",
+							Desc: "The second field for Workflow 2",
+						},
+					},
+					Required: []string{"field1", "field2"},
+				},
+			},
+			{
+				Name:       "Workflow 3",
+				ServiceUri: "http://example.com/workflow3",
+				Cron:       "0 12 * * *",
+				Prompt:     "Run the third workflow every day at noon",
+				Schema: workflow.Schema{
+					Title: "Workflow 3 Schema",
+					Type:  "object",
+					Properties: map[string]workflow.Field{
+						"field1": {
+							Name: "Field 1",
+							Type: "string",
+							Desc: "The first field for Workflow 3",
+						},
+						"field2": {
+							Name: "Field 2",
+							Type: "float",
+							Desc: "The second field for Workflow 3",
+						},
+					},
+					Required: []string{"field1"},
+				},
+			},
+			{
+				Name:       "Workflow 4",
+				ServiceUri: "http://example.com/workflow4",
+				Cron:       "0 18 * * *",
+				Prompt:     "Run the fourth workflow every evening at 6 PM",
+				Schema: workflow.Schema{
+					Title: "Workflow 4 Schema",
+					Type:  "object",
+					Properties: map[string]workflow.Field{
+						"field1": {
+							Name: "Field 1",
+							Type: "string",
+							Desc: "The first field for Workflow 4",
+						},
+						"field2": {
+							Name: "Field 2",
+							Type: "integer",
+							Desc: "The second field for Workflow 4",
+						},
+						"field3": {
+							Name: "Field 3",
+							Type: "boolean",
+							Desc: "The third field for Workflow 4",
+						},
+					},
+					Required: []string{"field1", "field2"},
+				},
+			},
+		},
+		TopCardData: dashboard.GetTopDashData(),
+	}
+
 	r.With(auth.RequireAuth).Get("/", func(w http.ResponseWriter, r *http.Request) {
-		t := template.Must(template.ParseFiles("views/index.html"))
-		t.Execute(w, nil)
+		handleError(templates.ExecuteTemplate(w, "dashboard.html", mockWorkflows), w, "dashboard/render")
 	})
 
-	r.Route("/workflow", func(r chi.Router) {
-		r.Post("/create", func(w http.ResponseWriter, r *http.Request) {
+	r.Route("/workflows", func(r chi.Router) {
+		r.With(auth.RequireAuth).Get("/", func(w http.ResponseWriter, r *http.Request) {
+			handleError(templates.ExecuteTemplate(w, "workflows.html", mockWorkflows), w, "workflows/render")
+		})
 
+		r.Post("/create", func(w http.ResponseWriter, r *http.Request) {
+			handleError(workflow.Create(w, r, db, runClient, &ctx), w, "workflow/create")
 		})
 	})
 
@@ -154,7 +289,8 @@ func main() {
 	log.Println("Running web server http://localhost:3000")
 	err = http.ListenAndServe(":3000", r)
 	if err != nil {
-		log.Fatal(err)
+		logger.Error("error serving http server", "error", err)
+		return
 	}
 }
 
@@ -173,29 +309,4 @@ func connectingHostToUser(hostString string) (*httputil.ReverseProxy, error) {
 		return nil, err
 	}
 	return httputil.NewSingleHostReverseProxy(url), nil
-}
-
-func proxyRequestHandler(proxy *httputil.ReverseProxy) func(http.ResponseWriter, *http.Request) {
-	return func(w http.ResponseWriter, r *http.Request) {
-		proxy.ServeHTTP(w, r)
-	}
-}
-
-//connnect to the scavenger database , workflow collections
-// find that specificic id
-// decode acess that specific workflow id
-
-// retriveing container id
-// database = client.connect('scavanehger')
-// workFlowCollections = db.collections('workflows')
-// var workflow := workflow{}
-// id := req.
-// filter := bson.d{'id':id}o
-// res := workflowcollections.findOne(conteext param,filter,)
-// workdflow = res.decode
-// given container url employ the reverse proxy handler
-
-// retrive the containerid from the mongodb database
-func retriveContainerIdFromDataBase() {
-
 }

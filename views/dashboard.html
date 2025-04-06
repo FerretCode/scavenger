@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="en-US" data-theme="dark">
+
+<head>
+  <meta charset="utf-8" name="viewport" content="width=device-width, initial-scale=1">
+  <title>Dashboard</title>
+
+  <!-- DaisyUI CSS library -->
+  <link href="https://cdn.jsdelivr.net/npm/daisyui@5" rel="stylesheet" type="text/css" />
+
+  <!-- bring in the tailwind stuff -->
+  <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+</head>
+
+<body>
+  <nav class="navbar bg-gray-800 shadow-sm border-b-2 border-black border-solid">
+    <div class="navbar-start">
+      <div class="dropdown">
+        <div tabindex="0" role="button" class="btn btn-ghost btn-circle">
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h7" />
+          </svg>
+        </div>
+        <ul tabindex="0" class="menu menu-sm dropdown-content bg-base-100 rounded-box z-1 mt-3 w-52 p-2 shadow">
+          <li><a href="/">Dashboard</a></li>
+          <li><a href="/workflows">Workflows</a></li>
+        </ul>
+      </div>
+    </div>
+    <div class="navbar-center">
+      <h1 class="text-3xl"><b>Scavenger</b></h1>
+    </div>
+    <div class="navbar-end">
+      <a class="btn bg-gray-600 shadow-lg mr-4" href="/auth/logout">
+        Logout
+      </a>
+    </div>
+  </nav>
+
+  <!-- create info cards at the top of dashboard -->
+  <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 p-4">
+    <div class="bg-base-200 rounded-box workflowCard">
+      <div class="bg-gray-800 p-4">
+        <span class="flex mb-4 border-b-2 border-solid border-black p-2 gap-4">
+          <h3 class="text-lg w-1/2"><b>Number of Running Workflows</b></h3>
+          <p class="w-1/2 break-words">
+            {{ .TopCardData.RunningWorkflows }}
+          </p>
+        </span>
+      </div>
+    </div>
+    <div class="bg-base-200 rounded-box workflowCard">
+      <div class="bg-gray-800 p-4">
+        <span class="flex mb-4 border-b-2 border-solid border-black p-2 gap-4">
+          <h3 class="text-lg w-1/2"><b>Total Documents Scraped</b></h3>
+          <p class="w-1/2 break-words">
+            {{ .TopCardData.DocumentsScraped }}
+          </p>
+        </span>
+      </div>
+    </div>
+    <div class="bg-base-200 rounded-box workflowCard">
+      <div class="bg-gray-800 p-4">
+        <span class="flex mb-4 border-b-2 border-solid border-black p-2 gap-4">
+          <h3 class="text-lg w-1/2"><b>Active Client Connections</b></h3>
+          <p class="w-1/2 break-words">
+            {{ .TopCardData.ClientConnections }}
+          </p>
+        </span>
+      </div>
+    </div>
+  </div>
+
+  <!-- create the list of cards -->
+  {{if not .Workflows}}
+  <p class="text-center text-md mt-4">
+    <b>No Running Workflows</b>
+  </p>
+  {{else}}
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 p-4">
+      {{range .Workflows}}
+      <div class="bg-base-200 rounded-box workflowCard">
+        <div class="bg-gray-800 p-4">
+          <span class="flex mb-4 border-b-2 border-solid border-black p-2 gap-4">
+            <h3 class="text-lg w-1/2"><b>Workflow Name</b></h3>
+            <p class="w-1/2 break-words">
+              {{ .Name }}
+            </p>
+          </span>
+          <span class="flex mb-4 border-b-2 border-solid border-black p-2 gap-4">
+            <h3 class="text-lg w-1/2"><b>Website URL</b></h3>
+            <p class="w-1/2 break-words">
+              {{ .ServiceUri }}
+            </p>
+          </span>
+          <span class="flex mb-4 border-b-2 border-solid border-black p-2 gap-4">
+            <h3 class="text-lg w-1/2"><b>Cron</b></h3>
+            <p class="w-1/2 break-words">
+              {{ .Cron }}
+            </p>
+          </span>
+          <span class="flex p-2">
+            <h3 class="text-lg w-1/2 gap-4"><b>Scraping Prompt</b></h3>
+            <p class="w-1/2 break-words">
+              {{ .Prompt }}
+            </p>
+          </span>
+        </div>
+      </div>
+      {{end}}
+    </div>
+    {{end}}
+
+    <!-- bring in the tailwind stuff -->
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+
+</body>
+
+</html>
