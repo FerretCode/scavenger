@@ -8,6 +8,9 @@
   <!-- DaisyUI CSS library -->
   <link href="https://cdn.jsdelivr.net/npm/daisyui@5" rel="stylesheet" type="text/css" />
 
+  <!-- Adding the rest of the themes -->
+  <link href="https://cdn.jsdelivr.net/npm/daisyui@5/themes.css" rel="stylesheet" type="text/css" />
+
   <!-- bring in the tailwind stuff -->
   <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
 </head>
@@ -40,9 +43,9 @@
 
   <!-- create info cards at the top of dashboard -->
   <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 p-4">
-    <div class="bg-base-200 rounded-box workflowCard">
-      <div class="bg-gray-800 p-4">
-        <span class="flex mb-4 border-b-2 border-solid border-black p-2 gap-4">
+    <div class="bg-base-200 rounded-box workflowCard" data-theme="aqua">
+      <div class="bg-gray-900 p-4 rounded-box">
+        <span class="flex p-2 gap-4">
           <h3 class="text-lg w-1/2"><b>Number of Running Workflows</b></h3>
           <p class="w-1/2 break-words">
             {{ .TopCardData.RunningWorkflows }}
@@ -50,9 +53,9 @@
         </span>
       </div>
     </div>
-    <div class="bg-base-200 rounded-box workflowCard">
-      <div class="bg-gray-800 p-4">
-        <span class="flex mb-4 border-b-2 border-solid border-black p-2 gap-4">
+    <div class="bg-base-200 rounded-box workflowCard" data-theme="aqua">
+      <div class="bg-gray-900 p-4 rounded-box">
+        <span class="flex p-2 gap-4">
           <h3 class="text-lg w-1/2"><b>Total Documents Scraped</b></h3>
           <p class="w-1/2 break-words">
             {{ .TopCardData.DocumentsScraped }}
@@ -60,9 +63,9 @@
         </span>
       </div>
     </div>
-    <div class="bg-base-200 rounded-box workflowCard">
-      <div class="bg-gray-800 p-4">
-        <span class="flex mb-4 border-b-2 border-solid border-black p-2 gap-4">
+    <div class="bg-base-200 rounded-box workflowCard" data-theme="aqua">
+      <div class="bg-gray-900 p-4 rounded-box">
+        <span class="flex p-2 gap-4">
           <h3 class="text-lg w-1/2"><b>Active Client Connections</b></h3>
           <p class="w-1/2 break-words">
             {{ .TopCardData.ClientConnections }}
