@@ -219,8 +219,20 @@ func main() {
 		},
 	}
 
+	type DashboardLastTwo struct {
+		DocScraped  int
+		CliConnects int
+	}
+
+	lastTwoCards := DashboardLastTwo{
+		DocScraped:  0,
+		CliConnects: 0,
+	}
+
 	r.With(auth.RequireAuth).Get("/", func(w http.ResponseWriter, r *http.Request) {
 		mockWorkflows.TopCardData = dashboard.GetTopDashData(runClient, ctx)
+		mockWorkflows.TopCardData.DocumentsScraped = lastTwoCards.DocScraped
+		mockWorkflows.TopCardData.ClientConnections = lastTwoCards.CliConnects
 		handleError(templates.ExecuteTemplate(w, "dashboard.html", mockWorkflows), w, "dashboard/render")
 	})
 
@@ -299,6 +311,9 @@ func main() {
 			return
 		}
 
+		lastTwoCards.DocScraped++
+		lastTwoCards.CliConnects++
+
 		ctx, cancel := context.WithCancel(r.Context())
 		defer cancel()
 
@@ -361,6 +376,9 @@ func main() {
 
 		clientConn.Close()
 		serverConn.Close()
+
+		lastTwoCards.DocScraped--
+		lastTwoCards.CliConnects--
 
 		wg.Wait()
 	})
