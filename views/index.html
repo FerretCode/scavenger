@@ -71,7 +71,7 @@
 
         <div>
           <div id="fieldAddition">
-            <h2 class="text-2xl mb-6 text-yellow-200"><b>Add a Field</b></h2>
+            <h2 class="text-2xl mb-6 text-yellow-200"><b>Add a JSON Field</b></h2>
             <span class="inputFieldForm flex gap-8">
               <div class="flex flex-col w-1/4">
                 <label for="fieldNameInput" class="mb-4 text-xl" id="fieldNameInputLabel"><b>Field Name</b></label>
@@ -84,10 +84,10 @@
               </div>
               <div class="flex flex-col w-1/4">
                 <label for="fieldDescInput" class="mb-4 text-xl" id="fieldDescInputLabel"><b>Field Description</b></label>
-                <textarea rows="6" cols="150" class="textarea p-2" placeholder="Enter your field description here..."></textarea>
+                <textarea rows="6" cols="150" class="textarea p-2" id="fieldDescInput" placeholder="Enter your field description here..."></textarea>
               </div>
             </span>
-            <button type="button" class="btn btn-success ml-1 mb-4 mt-4 text-lg">Add a JSON Field</button>
+            <button type="button" class="btn btn-success ml-1 mb-4 mt-4 text-lg" onclick="fieldAdd()">Add Field</button>
           </div>
         </div>
       </form>
@@ -97,38 +97,56 @@
     </div>
 
     <!-- right sidebar menu takes 1/4 of screen -->
-    <div class="w-1/4 bg-base-200 h-screen p-4">
-      <div class="menu bg-base-200 rounded-box w-full fieldContent">
-        <div class="bg-gray-800 p-4">
-          <span class="flex mb-4 border-b-2 border-solid border-black p-2">
-            <h3 class="text-lg flex-col w-1/2"><b>Field Name</b></h3>
-            <p class="flex-col w-1/2">
-              "Project Name"
-            </p>
-          </span>
-          <span class="flex mb-4 border-b-2 border-solid border-black p-2">
-            <h3 class="text-lg flex-col w-1/2"><b>Field Type</b></h3>
-            <p class="flex-col w-1/2">
-              "string"
-            </p>
-          </span>
-          <span class="flex mb-4 border-b-2 border-solid border-black p-2">
-            <h3 class="text-lg flex-col w-1/2"><b>Field Description</b></h3>
-            <p class="flex-col w-1/2">
-              "The name of the project"
-            </p>
-          </span>
-          <span class="mb-4 flex justify-center items-center">
-            <button type="button" class="btn btn-error ml-1 mb-4 mt-4 text-lg">Remove This JSON Field</button>
-          </span>
-        </div>
-      </div>
-    </div>
+    <div class="w-1/4 bg-base-200 h-screen p-4" id="fieldCardSection"></div>
   </div>
 
   <!-- script to create a new form for adding a JSON field -->
   <script>
-    function fieldAdd(fieldType) {
+    var numberFields = 0;
+
+    function fieldAdd() {
+      const fieldName = document.getElementById('fieldNameInput').value;
+      const fieldType = document.getElementById('fieldTypeInput').value;
+      const fieldDesc = document.getElementById('fieldDescInput').value;
+
+      const fieldSection = document.getElementById('fieldCardSection');
+      const card = document.createElement('div');
+      card.innerHTML = `
+            <div class="menu bg-base-200 rounded-box w-full fieldCard">
+              <div class="bg-gray-800 p-4">
+                <span class="flex mb-4 border-b-2 border-solid border-black p-2">
+                  <h3 class="text-lg flex-col w-1/2"><b>Field Name</b></h3>
+                  <p class="flex-col w-1/2">
+                    "${fieldName}"
+                  </p>
+                  <input type="hidden" name="fieldName_${numberFields}" value="${fieldName}">
+                </span>
+                <span class="flex mb-4 border-b-2 border-solid border-black p-2">
+                  <h3 class="text-lg flex-col w-1/2"><b>Field Type</b></h3>
+                  <p class="flex-col w-1/2">
+                    "${fieldType}"
+                  </p>
+                  <input type="hidden" name="fieldType_${numberFields}" value="${fieldType}">
+                </span>
+                <span class="flex mb-4 border-b-2 border-solid border-black p-2">
+                  <h3 class="text-lg flex-col w-1/2"><b>Field Description</b></h3>
+                  <p class="flex-col w-1/2">
+                    "${fieldDesc}"
+                  </p>
+                  <input type="hidden" name="fieldDesc_${numberFields}" value="${fieldDesc}">
+                </span>
+                <span class="mb-4 flex justify-center items-center">
+                  <button type="button" class="btn btn-error ml-1 mb-4 mt-4 text-lg">Remove This JSON Field</button>
+                </span>
+              </div>
+            </div>
+        </div>
+      `
+      numberFields++;
+      fieldSection.appendChild(card);
+    }
+
+    function fieldDelete(field) {
       const fieldArea = document.getElementById('fieldContent');
 
 
