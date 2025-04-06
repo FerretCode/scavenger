@@ -23,7 +23,7 @@
         </div>
         <ul tabindex="0" class="menu menu-sm dropdown-content bg-base-100 rounded-box z-1 mt-3 w-52 p-2 shadow">
           <li><a href="/">Dashboard</a></li>
-          <li><a href="/workflows">workflows</a></li>
+          <li><a href="/workflows">Workflows</a></li>
         </ul>
       </div>
     </div>
@@ -45,7 +45,7 @@
         <span class="flex mb-4 border-b-2 border-solid border-black p-2 gap-4">
           <h3 class="text-lg w-1/2"><b>Number of Running Workflows</b></h3>
           <p class="w-1/2 break-words">
-            { .RunningWorkflows }
+            {{ .TopCardData.RunningWorkflows }}
           </p>
         </span>
       </div>
@@ -55,7 +55,7 @@
         <span class="flex mb-4 border-b-2 border-solid border-black p-2 gap-4">
           <h3 class="text-lg w-1/2"><b>Total Documents Scraped</b></h3>
           <p class="w-1/2 break-words">
-            { .DocumentsScraped }
+            {{ .TopCardData.DocumentsScraped }}
           </p>
         </span>
       </div>
@@ -65,7 +65,7 @@
         <span class="flex mb-4 border-b-2 border-solid border-black p-2 gap-4">
           <h3 class="text-lg w-1/2"><b>Active Client Connections</b></h3>
           <p class="w-1/2 break-words">
-            { .ClientConnections }
+            {{ .TopCardData.ClientConnections }}
           </p>
         </span>
       </div>
