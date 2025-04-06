@@ -11,7 +11,7 @@ import (
 	"os"
 	"time"
 
-	"cloud.google.com/go/run/apiv2"
+	run "cloud.google.com/go/run/apiv2"
 	secretmanager "cloud.google.com/go/secretmanager/apiv1"
 	"github.com/ferretcode/scavenger/internal/auth"
 	"github.com/ferretcode/scavenger/internal/workflow"
@@ -30,7 +30,8 @@ func parseTemplates() error {
 	var err error
 
 	files := []string{
-		"./views/index.html",
+		"./views/dashboard.html",
+		"./views/workflows.html",
 		"./views/login.html",
 	}
 
@@ -102,10 +103,56 @@ func main() {
 	defer cancel()
 	_ = db.Ping(pingCtx, readpref.Primary())
 
+	// CODE STARTS HERE
 	r := chi.NewRouter()
 
+	type workflows struct {
+		Name   string
+		URL    string
+		Cron   string
+		Prompt string
+	}
+
+	type dashboardData struct {
+		Workflows []workflows
+	}
+
+	mockWorkflows := dashboardData{
+		Workflows: []workflows{
+			{
+				Name:   "Workflow 1",
+				URL:    "http://example.com/workflow1",
+				Cron:   "0 0 * * *",
+				Prompt: "Run the first workflow every midnight",
+			},
+			{
+				Name:   "Workflow 2",
+				URL:    "http://example.com/workflow2",
+				Cron:   "0 6 * * *",
+				Prompt: "Run the second workflow every morning at 6 AM",
+			},
+			{
+				Name:   "Workflow 3",
+				URL:    "http://example.com/workflow3",
+				Cron:   "0 12 * * *",
+				Prompt: "Run the third workflow every day at noon",
+			},
+			{
+				Name:   "Workflow 4",
+				URL:    "http://example.com/workflow4",
+				Cron:   "0 18 * * *",
+				Prompt: "Run the fourth workflow every evening at 6 PM",
+			},
+		},
+	}
+
 	r.With(auth.RequireAuth).Get("/", func(w http.ResponseWriter, r *http.Request) {
-		t := template.Must(template.ParseFiles("views/index.html"))
+		t := template.Must(template.ParseFiles("views/dashboard.html"))
+		t.Execute(w, mockWorkflows)
+	})
+
+	r.With(auth.RequireAuth).Get("/workflows", func(w http.ResponseWriter, r *http.Request) {
+		t := template.Must(template.ParseFiles("views/workflows.html"))
 		t.Execute(w, nil)
 	})
 
