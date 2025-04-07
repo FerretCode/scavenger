@@ -9,7 +9,8 @@ load_dotenv()
 
 
 async def websocket_client():
-    uri = "ws://127.0.0.1:3000/connect/debt"
+    uri = f"{os.environ['SCAVENGER_WEBSOCKET_SERVER']
+             }/connect/{os.environ['SCAVENGER_WORKFLOW_NAME']}"
     headers = {
         "X-API-Key": os.environ['SCAVENGER_API_KEY'],
     }
