@@ -55,13 +55,15 @@ func main() {
 
 	ctx := context.Background()
 
-	err := godotenv.Load()
-	if err != nil {
-		logger.Error("error parsing .env", "err", err)
-		return
+	if _, err := os.Stat(".env"); err == nil {
+		err := godotenv.Load()
+		if err != nil {
+			logger.Error("error parsing .env", "err", err)
+			return
+		}
 	}
 
-	err = parseTemplates()
+	err := parseTemplates()
 	if err != nil {
 		logger.Error("error parsing templates", "err", err)
 		return
@@ -73,12 +75,21 @@ func main() {
 		return
 	}
 
-	if _, err = os.Stat("./credentials.json"); err != nil {
-		logger.Error("error parsing credentials file", "err", err)
-		return
+	var credentials []byte
+
+	if _, err := os.Stat("./credentials.json"); err == nil {
+		bytes, err := os.ReadFile("./credentials.json")
+		if err != nil {
+			logger.Error("error parsing credentials file", "err", err)
+			return
+		}
+
+		credentials = bytes
+	} else {
+		credentials = []byte(os.Getenv("GCP_CREDENTIALS_JSON"))
 	}
 
-	secretManagerClient, err := secretmanager.NewClient(ctx, option.WithCredentialsFile("./credentials.json"))
+	secretManagerClient, err := secretmanager.NewClient(ctx, option.WithCredentialsJSON(credentials))
 	if err != nil {
 		logger.Error("error using credentials file", "err", err)
 		return
@@ -86,7 +97,7 @@ func main() {
 	defer secretManagerClient.Close()
 	_ = secretManagerClient
 
-	runClient, err := run.NewServicesClient(ctx, option.WithCredentialsFile("./credentials.json"))
+	runClient, err := run.NewServicesClient(ctx, option.WithCredentialsJSON(credentials))
 	if err != nil {
 		logger.Error("error creating google run client", "err", err)
 		return
