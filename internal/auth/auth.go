@@ -7,20 +7,15 @@ import (
 	"crypto/subtle"
 	"encoding/base64"
 	"encoding/hex"
+	"fmt"
 	"html/template"
 	"log/slog"
 	"net/http"
-	"os"
 	"sync"
 
+	"github.com/ferretcode/scavenger/internal/types"
 	"go.mongodb.org/mongo-driver/v2/bson"
 	"go.mongodb.org/mongo-driver/v2/mongo"
-)
-
-const (
-	sessionsCookieName = "sessions"
-	adminUsername      = "admin"
-	adminPassword      = "password"
 )
 
 var (
@@ -28,12 +23,22 @@ var (
 	sessions   = make(map[string]bool) // map[sessionToken]isAuthenticated
 )
 
+type AuthService struct {
+	Config *types.ScavengerConfig
+}
+
 type ApiKey struct {
 	Hash string `json:"hash"`
 }
 
-func RenderLogin(w http.ResponseWriter, r *http.Request, templates *template.Template) error {
-	cookie, err := r.Cookie(sessionsCookieName)
+func NewAuthService(config *types.ScavengerConfig) AuthService {
+	return AuthService{
+		Config: config,
+	}
+}
+
+func (a *AuthService) RenderLogin(w http.ResponseWriter, r *http.Request, templates *template.Template) error {
+	cookie, err := r.Cookie(a.Config.SessionsCookieName)
 	if err == nil {
 		sessionsMu.Lock()
 		valid := sessions[cookie.Value]
@@ -48,21 +53,20 @@ func RenderLogin(w http.ResponseWriter, r *http.Request, templates *template.Tem
 	return templates.ExecuteTemplate(w, "login.html", nil)
 }
 
-func Login(w http.ResponseWriter, r *http.Request) error {
+func (a *AuthService) Login(w http.ResponseWriter, r *http.Request) error {
 	if err := r.ParseForm(); err != nil {
 		http.Error(w, "Bad request", http.StatusBadRequest)
 		return nil
 	}
 
-	// Check credentials
 	username := r.FormValue("username")
 	password := r.FormValue("password")
-	if username != adminUsername || password != adminPassword {
+
+	if username != a.Config.AdminUsername || password != a.Config.AdminPassword {
 		http.Error(w, "Invalid credentials", http.StatusUnauthorized)
 		return nil
 	}
 
-	// Generate session token for authenticated user
 	token, err := generateToken()
 	if err != nil {
 		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
@@ -74,20 +78,22 @@ func Login(w http.ResponseWriter, r *http.Request) error {
 	sessionsMu.Unlock()
 
 	http.SetCookie(w, &http.Cookie{
-		Name:     sessionsCookieName,
+		Name:     a.Config.SessionsCookieName,
 		Value:    token,
 		Path:     "/",
 		HttpOnly: true,
-		Secure:   false, // change to true if using HTTPS
+		Secure:   false,
 	})
+
+	fmt.Println("logged in")
 
 	http.Redirect(w, r, "/", http.StatusSeeOther)
 
 	return nil
 }
 
-func Logout(w http.ResponseWriter, r *http.Request) error {
-	cookie, err := r.Cookie(sessionsCookieName)
+func (a *AuthService) Logout(w http.ResponseWriter, r *http.Request) error {
+	cookie, err := r.Cookie(a.Config.SessionsCookieName)
 	if err == nil {
 		sessionsMu.Lock()
 		delete(sessions, cookie.Value)
@@ -95,7 +101,7 @@ func Logout(w http.ResponseWriter, r *http.Request) error {
 	}
 
 	http.SetCookie(w, &http.Cookie{
-		Name:   sessionsCookieName,
+		Name:   a.Config.SessionsCookieName,
 		Value:  "",
 		Path:   "/",
 		MaxAge: -1,
@@ -106,11 +112,11 @@ func Logout(w http.ResponseWriter, r *http.Request) error {
 	return nil
 }
 
-func RenderAPIKey(w http.ResponseWriter, r *http.Request, templates *template.Template, data any) error {
+func (a *AuthService) RenderAPIKey(w http.ResponseWriter, r *http.Request, templates *template.Template, data any) error {
 	return templates.ExecuteTemplate(w, "api.html", data)
 }
 
-func CreateAPIKey(w http.ResponseWriter, r *http.Request, db *mongo.Client, templates *template.Template, ctx context.Context) error {
+func (a *AuthService) CreateAPIKey(w http.ResponseWriter, r *http.Request, db *mongo.Client, templates *template.Template, ctx context.Context) error {
 	t, err := generateToken()
 	if err != nil {
 		return err
@@ -123,12 +129,12 @@ func CreateAPIKey(w http.ResponseWriter, r *http.Request, db *mongo.Client, temp
 		Hash: encoded,
 	}
 
-	_, err = db.Database(os.Getenv("DATABASE_NAME")).Collection("api_keys").InsertOne(ctx, apiKey)
+	_, err = db.Database(a.Config.DatabaseName).Collection("api_keys").InsertOne(ctx, apiKey)
 	if err != nil {
 		return err
 	}
 
-	return RenderAPIKey(w, r, templates, t)
+	return a.RenderAPIKey(w, r, templates, t)
 }
 
 // Generates a plaintext token
@@ -146,7 +152,7 @@ func hashToken(plaintextToken string) []byte {
 	return hash[:]
 }
 
-func RequireAPIKey(ctx context.Context, db *mongo.Client, logger *slog.Logger) func(http.Handler) http.Handler {
+func (a *AuthService) RequireAPIKey(ctx context.Context, db *mongo.Client, logger *slog.Logger) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			apiKey := r.Header.Get("X-API-Key")
@@ -155,7 +161,7 @@ func RequireAPIKey(ctx context.Context, db *mongo.Client, logger *slog.Logger) f
 			encoded := base64.StdEncoding.EncodeToString(hash)
 			filter := bson.D{{"hash", encoded}}
 
-			res := db.Database("scavenger").Collection("api_keys").FindOne(ctx, filter)
+			res := db.Database(a.Config.DatabaseName).Collection("api_keys").FindOne(ctx, filter)
 
 			if res.Err() != nil {
 				if res.Err() == mongo.ErrNoDocuments {
@@ -195,9 +201,9 @@ func RequireAPIKey(ctx context.Context, db *mongo.Client, logger *slog.Logger) f
 	}
 }
 
-func RequireAuth(next http.Handler) http.Handler {
+func (a *AuthService) RequireAuth(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		cookie, err := r.Cookie(sessionsCookieName)
+		cookie, err := r.Cookie(a.Config.SessionsCookieName)
 		if err != nil {
 			http.Redirect(w, r, "/auth/login", http.StatusFound)
 			return

@@ -3,7 +3,7 @@ package dashboard
 import (
 	"context"
 
-	run "cloud.google.com/go/run/apiv2"
+	"github.com/ferretcode/scavenger/internal/infrastructure"
 	"github.com/ferretcode/scavenger/internal/workflow"
 )
 
@@ -18,8 +18,8 @@ type DashboardData struct {
 	TopCardData TopDashData
 }
 
-func GetTopDashData(runClient *run.ServicesClient, ctx context.Context) TopDashData {
-	running, err := workflow.GetRunningWorkflows(runClient, ctx)
+func GetTopDashData(serviceProvider infrastructure.ServiceProvider, ctx context.Context) TopDashData {
+	running, err := serviceProvider.GetRunningWorkflows()
 	if err != nil {
 		running = 0 // or handle error
 	}

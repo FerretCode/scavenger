@@ -3,33 +3,33 @@ package main
 import (
 	"context"
 	"html/template"
-	"io"
 	"log"
 	"log/slog"
 	"net/http"
 	"net/http/httputil"
 	"net/url"
 	"os"
-	"sync"
+	"strings"
 	"time"
 
-	run "cloud.google.com/go/run/apiv2"
-	secretmanager "cloud.google.com/go/secretmanager/apiv1"
+	"github.com/caarlos0/env/v11"
 	"github.com/ferretcode/scavenger/internal/auth"
 	"github.com/ferretcode/scavenger/internal/dashboard"
+	"github.com/ferretcode/scavenger/internal/infrastructure"
+	"github.com/ferretcode/scavenger/internal/types"
+	"github.com/ferretcode/scavenger/internal/websocket"
 	"github.com/ferretcode/scavenger/internal/workflow"
 	"github.com/go-chi/chi/v5"
-	"github.com/gorilla/websocket"
 	"github.com/joho/godotenv"
 	"go.mongodb.org/mongo-driver/v2/bson"
 	"go.mongodb.org/mongo-driver/v2/mongo"
 	"go.mongodb.org/mongo-driver/v2/mongo/options"
 	"go.mongodb.org/mongo-driver/v2/mongo/readpref"
-	"google.golang.org/api/option"
 )
 
 var templates *template.Template
 var logger *slog.Logger
+var config types.ScavengerConfig
 
 func parseTemplates() error {
 	var err error
@@ -63,47 +63,23 @@ func main() {
 		}
 	}
 
+	if err := env.Parse(&config); err != nil {
+		logger.Error("error parsing config", "err", err)
+		return
+	}
+
 	err := parseTemplates()
 	if err != nil {
 		logger.Error("error parsing templates", "err", err)
 		return
 	}
 
-	dsn := os.Getenv("DATABASE_URL")
+	dsn := config.DatabaseUrl
 	if dsn == "" {
 		logger.Error("database url does not exist in the environment variables")
 		return
 	}
 
-	var credentials []byte
-
-	if _, err := os.Stat("./credentials.json"); err == nil {
-		bytes, err := os.ReadFile("./credentials.json")
-		if err != nil {
-			logger.Error("error parsing credentials file", "err", err)
-			return
-		}
-
-		credentials = bytes
-	} else {
-		credentials = []byte(os.Getenv("GCP_CREDENTIALS_JSON"))
-	}
-
-	secretManagerClient, err := secretmanager.NewClient(ctx, option.WithCredentialsJSON(credentials))
-	if err != nil {
-		logger.Error("error using credentials file", "err", err)
-		return
-	}
-	defer secretManagerClient.Close()
-	_ = secretManagerClient
-
-	runClient, err := run.NewServicesClient(ctx, option.WithCredentialsJSON(credentials))
-	if err != nil {
-		logger.Error("error creating google run client", "err", err)
-		return
-	}
-
-	// Connect to MongoDB
 	db, err := mongo.Connect(options.Client().ApplyURI(dsn))
 	if err != nil {
 		logger.Error("error connecting to mongodb database", "err", err)
@@ -115,12 +91,10 @@ func main() {
 		}
 	}()
 
-	// Ping the database
 	pingCtx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
 	defer cancel()
 	_ = db.Ping(pingCtx, readpref.Primary())
 
-	// CODE STARTS HERE
 	r := chi.NewRouter()
 
 	type DashboardLastTwo struct {
@@ -133,7 +107,29 @@ func main() {
 		CliConnects: 0,
 	}
 
-	r.With(auth.RequireAuth).Get("/", func(w http.ResponseWriter, r *http.Request) {
+	authService := auth.NewAuthService(&config)
+	websocketService := websocket.NewWebsocketService(&config, db, logger, ctx, &lastTwoCards.CliConnects, &lastTwoCards.DocScraped)
+	var serviceProvider infrastructure.ServiceProvider
+
+	switch strings.ToLower(config.Provider) {
+	case "gcp":
+		serviceProvider, err = infrastructure.NewGcpServiceProvider(&config, db, ctx, logger)
+		if err != nil {
+			logger.Error("error initializing gcp provider", "err", err)
+			return
+		}
+		break
+	case "local":
+		serviceProvider, err = infrastructure.NewLocalServiceProvider(&config, db, ctx, logger)
+		if err != nil {
+			logger.Error("error initializing local provider", "err", err)
+			return
+		}
+	default:
+		logger.Error("error selecting provider. invalid provider provided")
+	}
+
+	r.With(authService.RequireAuth).Get("/", func(w http.ResponseWriter, r *http.Request) {
 		workflows, err := getWorkflows(db)
 		if err != nil {
 			handleError(err, w, "index")
@@ -142,10 +138,10 @@ func main() {
 
 		data := dashboard.DashboardData{
 			Workflows:   workflows,
-			TopCardData: dashboard.GetTopDashData(runClient, ctx),
+			TopCardData: dashboard.GetTopDashData(serviceProvider, ctx),
 		}
 
-		data.TopCardData = dashboard.GetTopDashData(runClient, ctx)
+		data.TopCardData = dashboard.GetTopDashData(serviceProvider, ctx)
 		data.TopCardData.DocumentsScraped = lastTwoCards.DocScraped
 		data.TopCardData.ClientConnections = lastTwoCards.CliConnects
 		handleError(templates.ExecuteTemplate(w, "dashboard.html", data), w, "dashboard/render")
@@ -158,7 +154,7 @@ func main() {
 	})
 
 	r.Route("/workflows", func(r chi.Router) {
-		r.Use(auth.RequireAuth)
+		r.Use(authService.RequireAuth)
 
 		r.Get("/", func(w http.ResponseWriter, r *http.Request) {
 			workflows, err := getWorkflows(db)
@@ -169,179 +165,47 @@ func main() {
 
 			data := dashboard.DashboardData{
 				Workflows:   workflows,
-				TopCardData: dashboard.GetTopDashData(runClient, ctx),
+				TopCardData: dashboard.GetTopDashData(serviceProvider, ctx),
 			}
 
 			handleError(templates.ExecuteTemplate(w, "workflows.html", data), w, "workflows/render")
 		})
 
 		r.Post("/create", func(w http.ResponseWriter, r *http.Request) {
-			handleError(workflow.Create(w, r, db, runClient, ctx), w, "workflow/create")
+			handleError(serviceProvider.CreateWorkflow(w, r), w, "workflow/create")
 		})
 
 		r.Post("/delete", func(w http.ResponseWriter, r *http.Request) {
-			handleError(workflow.Delete(w, r, db, runClient, ctx), w, "workflow/delete")
+			handleError(serviceProvider.DeleteWorkflow(w, r), w, "workflow/delete")
 		})
-
 	})
 
-	r.With(auth.RequireAPIKey(ctx, db, logger)).Get("/connect/{workflow_name}", func(w http.ResponseWriter, r *http.Request) {
-		upgrader := websocket.Upgrader{
-			CheckOrigin: func(r *http.Request) bool {
-				return true
-			},
-		}
-
-		clientConn, err := upgrader.Upgrade(w, r, nil)
-		if err != nil {
-			handleError(err, w, "connect/upgrade")
-			return
-		}
-
-		workflowName := chi.URLParam(r, "workflow_name")
-		filter := bson.D{{"name", workflowName}}
-		res := db.Database("scavenger").Collection("workflows").FindOne(ctx, filter)
-		workflow := workflow.Workflow{}
-
-		if res.Err() != nil {
-			clientConn.Close()
-			handleError(res.Err(), w, "connect/find")
-			return
-		}
-
-		err = res.Decode(&workflow)
-		if err != nil {
-			clientConn.Close()
-			handleError(err, w, "connect/decode")
-			return
-		}
-
-		serviceUri, err := url.Parse(workflow.ServiceUri)
-		if err != nil {
-			clientConn.Close()
-			handleError(err, w, "connect/service")
-			return
-		}
-
-		if serviceUri.Scheme == "https" {
-			serviceUri.Scheme = "wss"
-		} else {
-			serviceUri.Scheme = "ws"
-		}
-
-		targetUri := serviceUri.String() + "/ws"
-
-		dialer := websocket.DefaultDialer
-
-		serverConn, resp, err := dialer.Dial(targetUri, nil)
-		if err != nil {
-			clientConn.Close()
-			if resp != nil {
-				body, readErr := io.ReadAll(resp.Body)
-				if readErr != nil {
-					logger.Error("handshake failed", "status", resp.StatusCode, "err", readErr)
-				} else {
-					logger.Error("handshake failed", "status", resp.StatusCode, "body", string(body))
-				}
-			}
-			handleError(err, w, "connect/connection")
-			return
-		}
-
-		lastTwoCards.DocScraped++
-		lastTwoCards.CliConnects++
-
-		ctx, cancel := context.WithCancel(r.Context())
-		defer cancel()
-
-		var wg sync.WaitGroup
-		wg.Add(2)
-
-		go func() {
-			defer wg.Done()
-			defer cancel()
-
-			for {
-				select {
-				case <-ctx.Done():
-					return
-				default:
-					mt, message, err := clientConn.ReadMessage()
-					if err != nil {
-						logger.Error("read from client failed", "err", err)
-						return
-					}
-
-					err = serverConn.WriteMessage(mt, message)
-					if err != nil {
-						logger.Error("write to server failed", "err", err)
-						return
-					}
-				}
-			}
-		}()
-
-		go func() {
-			defer wg.Done()
-			defer cancel()
-
-			for {
-				select {
-				case <-ctx.Done():
-					return
-				default:
-					mt, message, err := serverConn.ReadMessage()
-					if err != nil {
-						logger.Error("read from server failed", "err", err)
-						return
-					}
-
-					err = clientConn.WriteMessage(mt, message)
-					if err != nil {
-						logger.Error("write to client failed", "err", err)
-						return
-					}
-				}
-			}
-		}()
-
-		<-ctx.Done()
-
-		closeMsg := websocket.FormatCloseMessage(websocket.CloseNormalClosure, "connection closed")
-		clientConn.WriteMessage(websocket.CloseMessage, closeMsg)
-		serverConn.WriteMessage(websocket.CloseMessage, closeMsg)
-
-		clientConn.Close()
-		serverConn.Close()
-
-		wg.Wait()
-
-		lastTwoCards.DocScraped--
-		lastTwoCards.CliConnects--
+	r.With(authService.RequireAPIKey(ctx, db, logger)).Get("/connect/{workflow_name}", func(w http.ResponseWriter, r *http.Request) {
+		websocketService.HandleWorkflowConnection(w, r)
 	})
 
 	r.Route("/auth", func(r chi.Router) {
 		r.Get("/login", func(w http.ResponseWriter, r *http.Request) {
-			handleError(auth.RenderLogin(w, r, templates), w, "login/render")
+			handleError(authService.RenderLogin(w, r, templates), w, "login/render")
 		})
 
 		r.Post("/login", func(w http.ResponseWriter, r *http.Request) {
-			handleError(auth.Login(w, r), w, "login")
+			handleError(authService.Login(w, r), w, "login")
 		})
 
 		r.Get("/logout", func(w http.ResponseWriter, r *http.Request) {
-			handleError(auth.Logout(w, r), w, "logout")
+			handleError(authService.Logout(w, r), w, "logout")
 		})
 
 		r.Route("/api", func(r chi.Router) {
-			r.Use(auth.RequireAuth)
+			r.Use(authService.RequireAuth)
 
 			r.Get("/", func(w http.ResponseWriter, r *http.Request) {
-				handleError(auth.RenderAPIKey(w, r, templates, nil), w, "api/render")
+				handleError(authService.RenderAPIKey(w, r, templates, nil), w, "api/render")
 			})
 
 			r.Post("/", func(w http.ResponseWriter, r *http.Request) {
-				handleError(auth.CreateAPIKey(w, r, db, templates, ctx), w, "api")
+				handleError(authService.CreateAPIKey(w, r, db, templates, ctx), w, "api")
 			})
 		})
 	})
@@ -355,8 +219,7 @@ func main() {
 }
 
 func getWorkflows(db *mongo.Client) ([]workflow.Workflow, error) {
-	// Retrieve all the workflows
-	cur, err := db.Database("scavenger").Collection("workflows").Find(context.Background(), bson.D{{}})
+	cur, err := db.Database(config.DatabaseName).Collection("workflows").Find(context.Background(), bson.D{{}})
 	if err != nil {
 		return nil, err
 	}
@@ -381,8 +244,6 @@ func handleError(err error, w http.ResponseWriter, svc string) {
 	}
 }
 
-// taking the host req
-// creatign a reverse proxy using httputil
 func proxyToUri(hostString string) (*httputil.ReverseProxy, error) {
 	url, err := url.Parse(hostString)
 	if err != nil {
