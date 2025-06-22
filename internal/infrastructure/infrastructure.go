@@ -1,6 +1,7 @@
 package infrastructure
 
 import (
+	"errors"
 	"fmt"
 	"math/rand"
 	"net/http"
@@ -8,9 +9,13 @@ import (
 	"strings"
 )
 
+var ErrNoWorkflowExists = errors.New("this workflow does not exist")
+
 type ServiceProvider interface {
 	CreateWorkflow(w http.ResponseWriter, r *http.Request) error
+	CreateWorkflowFromConfig(workflow Workflow) error
 	DeleteWorkflow(w http.ResponseWriter, r *http.Request) error
+	CheckWorkflowExists(workflowName string) (bool, error)
 	GetRunningWorkflows() (int, error)
 }
 

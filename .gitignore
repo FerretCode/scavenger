@@ -26,3 +26,4 @@ go.work.sum
 .venv/
 scraper/.env
 credentials.json
+config.json

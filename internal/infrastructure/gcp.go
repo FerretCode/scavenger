@@ -12,7 +12,7 @@ import (
 	run "cloud.google.com/go/run/apiv2"
 	"cloud.google.com/go/run/apiv2/runpb"
 	secretmanager "cloud.google.com/go/secretmanager/apiv1"
-	"github.com/ferretcode/scavenger/internal/types"
+	"github.com/ferretcode/scavenger/pkg/types"
 	"go.mongodb.org/mongo-driver/v2/bson"
 	"go.mongodb.org/mongo-driver/v2/mongo"
 	"google.golang.org/api/iterator"
@@ -91,6 +91,20 @@ func (g *GcpServiceProvider) DeleteWorkflow(w http.ResponseWriter, r *http.Reque
 	return nil
 }
 
+func (g *GcpServiceProvider) CreateWorkflowFromConfig(workflow Workflow) error {
+	schemaString, err := json.Marshal(workflow.Schema)
+	if err != nil {
+		return err
+	}
+
+	err = g.createWorkflow(workflow, string(schemaString))
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
 func (g *GcpServiceProvider) CreateWorkflow(w http.ResponseWriter, r *http.Request) error {
 	workflow, err := generateWorkflowFromRequest(r)
 	if err != nil {
@@ -102,11 +116,82 @@ func (g *GcpServiceProvider) CreateWorkflow(w http.ResponseWriter, r *http.Reque
 		return err
 	}
 
+	err = g.createWorkflow(*workflow, string(schemaString))
+	if err != nil {
+		return err
+	}
+
+	http.Redirect(w, r, "/", http.StatusSeeOther)
+
+	return nil
+}
+
+func (g *GcpServiceProvider) CheckWorkflowExists(workflowName string) (bool, error) {
+	parent := fmt.Sprintf("projects/%s/locations/%s", g.Config.GcpProjectId, g.Config.GcpLocation)
+
+	requestRunPB := &runpb.ListServicesRequest{
+		Parent: parent,
+	}
+
+	resp := g.runClient.ListServices(g.ctx, requestRunPB)
+	done := false
+
+	for !done {
+		if service, err := resp.Next(); err != iterator.Done {
+			if _, ok := service.Labels[""]; ok {
+				return true, nil
+			} else {
+				return false, ErrNoWorkflowExists
+			}
+		} else {
+			done = true
+		}
+	}
+
+	return true, nil
+}
+
+func (g *GcpServiceProvider) GetRunningWorkflows() (int, error) {
+
+	parent := fmt.Sprintf("projects/%s/locations/%s", g.Config.GcpProjectId, g.Config.GcpLocation)
+
+	requestRunPB := &runpb.ListServicesRequest{
+		Parent: parent,
+	}
+
+	resp := g.runClient.ListServices(g.ctx, requestRunPB)
+	done := false
+	totalContainers := 0
+
+	for !done {
+		if _, err := resp.Next(); err != iterator.Done {
+			totalContainers++
+		} else {
+			done = true
+		}
+	}
+
+	return totalContainers, nil
+}
+
+func (g *GcpServiceProvider) createWorkflow(workflow Workflow, schemaString string) error {
+	exists, err := g.CheckWorkflowExists(workflow.Name)
+	if err != nil {
+		if err != ErrNoWorkflowExists {
+			return err
+		}
+	}
+
+	if exists {
+		return nil // no-op since workflow exists already
+	}
+
 	createServiceRequest := &runpb.CreateServiceRequest{
 		Parent:    fmt.Sprintf("projects/%s/locations/%s", os.Getenv("GCP_PROJECT_ID"), os.Getenv("GCP_LOCATION")),
 		ServiceId: generateServiceID(),
 		Service: &runpb.Service{
 			Template: &runpb.RevisionTemplate{
+				Labels: map[string]string{"workflow": workflow.Name},
 				Containers: []*runpb.Container{
 					{
 						Image: "sthanguy/scavenger-scraper",
@@ -201,45 +286,12 @@ func (g *GcpServiceProvider) CreateWorkflow(w http.ResponseWriter, r *http.Reque
 		return err
 	}
 
+	workflow.ServiceUri = service.Uri
+
 	_, err = g.db.Database(g.Config.DatabaseName).Collection("workflows").InsertOne(g.ctx, workflow)
 	if err != nil {
 		return err
 	}
 
-	workflow.ServiceUri = service.Uri
-
-	http.Redirect(w, r, "/", http.StatusSeeOther)
-
 	return nil
-}
-
-func (g *GcpServiceProvider) GetRunningWorkflows() (int, error) {
-
-	parent := fmt.Sprintf("projects/%s/locations/%s", os.Getenv("GCP_PROJECT_ID"), os.Getenv("GCP_LOCATION"))
-
-	url := fmt.Sprintf("https://run.googleapis.com/v2/%s/services", parent)
-
-	req, err := http.NewRequest("GET", url, nil)
-	if err != nil {
-		return 0, err
-	}
-	req.Header.Set("Content-Type", "application/json")
-
-	requestRunPB := &runpb.ListServicesRequest{
-		Parent: parent,
-	}
-
-	resp := g.runClient.ListServices(g.ctx, requestRunPB)
-	done := false
-	totalContainers := 0
-
-	for !done {
-		if _, err := resp.Next(); err != iterator.Done {
-			totalContainers++
-		} else {
-			done = true
-		}
-	}
-
-	return totalContainers, nil
 }

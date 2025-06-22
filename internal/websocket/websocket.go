@@ -8,8 +8,8 @@ import (
 	"net/url"
 	"sync"
 
-	"github.com/ferretcode/scavenger/internal/types"
 	"github.com/ferretcode/scavenger/internal/workflow"
+	"github.com/ferretcode/scavenger/pkg/types"
 	"github.com/go-chi/chi/v5"
 	"github.com/gorilla/websocket"
 	"go.mongodb.org/mongo-driver/v2/bson"
@@ -22,8 +22,7 @@ type WebsocketService struct {
 	logger *slog.Logger
 	ctx    context.Context
 
-	connectionsMetric  *int
-	docsScrapedMetrics *int
+	dashboardCardData *types.DashboardCardData
 }
 
 func NewWebsocketService(
@@ -31,16 +30,14 @@ func NewWebsocketService(
 	db *mongo.Client,
 	logger *slog.Logger,
 	ctx context.Context,
-	connectionsMetric *int,
-	docsScrapedMetric *int,
+	dashboardCardData *types.DashboardCardData,
 ) WebsocketService {
 	return WebsocketService{
-		Config:             config,
-		db:                 db,
-		logger:             logger,
-		ctx:                ctx,
-		connectionsMetric:  connectionsMetric,
-		docsScrapedMetrics: docsScrapedMetric,
+		Config:            config,
+		db:                db,
+		logger:            logger,
+		ctx:               ctx,
+		dashboardCardData: dashboardCardData,
 	}
 }
 
@@ -107,7 +104,7 @@ func (ws *WebsocketService) HandleWorkflowConnection(w http.ResponseWriter, r *h
 		return
 	}
 
-	*ws.connectionsMetric++
+	ws.dashboardCardData.CliConnects++
 
 	ctx, cancel := context.WithCancel(r.Context())
 	defer cancel()
@@ -154,7 +151,7 @@ func (ws *WebsocketService) HandleWorkflowConnection(w http.ResponseWriter, r *h
 					return
 				}
 
-				*ws.docsScrapedMetrics++
+				ws.dashboardCardData.DocScraped++
 
 				err = clientConn.WriteMessage(mt, message)
 				if err != nil {
@@ -176,8 +173,7 @@ func (ws *WebsocketService) HandleWorkflowConnection(w http.ResponseWriter, r *h
 
 	wg.Wait()
 
-	*ws.connectionsMetric--
-
+	ws.dashboardCardData.CliConnects--
 }
 
 func handleError(err error, w http.ResponseWriter, svc string, logger *slog.Logger) {

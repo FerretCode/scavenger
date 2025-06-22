@@ -1,1 +1,30 @@
-{}
+[
+    {
+        "name": "debt-clock-reader",
+        "prompt": "what is the national debt right now?",
+        "cron": "* * * * *",
+        "website": "https://www.pgpf.org/national-debt-clock/",
+        "schema": {
+            "debt": {
+                "type": "float",
+                "desc": "the national debt in USD"
+            }
+        }
+    },
+    {
+        "name": "track-bike-scraper",
+        "prompt": "identify all bicycles and their links on this eBay search result",
+        "cron": "* * * * *",
+        "website": "https://www.ebay.com/sch/i.html?_dcat=22679&_fsrp=1&rt=nc&_from=R40&_nkw=bike+frame&_sacat=0&Wheel%2520Size=700C&Frame%2520Size=55%2520cm%7C56%2520cm%7C57%2520cm%7C58%2520cm%7C59%2520cm",
+        "schema": {
+            "name": {
+                "type": "string",
+                "desc": "the name of the bike/listing of the item"
+            },
+            "url": {
+                "type": "string",
+                "desc": "the URL to the listing of this bike/item"
+            }
+        }
+    }
+]

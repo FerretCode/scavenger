@@ -1,0 +1,14 @@
+[
+    {
+        "name": "debt-clock-reader",
+        "prompt": "what is the national debt right now?",
+        "cron": "* * * * *",
+        "website": "https://www.pgpf.org/national-debt-clock/",
+        "schema": {
+            "debt": {
+                "type": "float",
+                "desc": "the national debt in USD"
+            }
+        }
+    }
+]

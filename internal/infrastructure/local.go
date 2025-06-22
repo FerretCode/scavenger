@@ -14,7 +14,7 @@ import (
 	"github.com/docker/docker/api/types/filters"
 	"github.com/docker/docker/client"
 	"github.com/docker/go-connections/nat"
-	"github.com/ferretcode/scavenger/internal/types"
+	"github.com/ferretcode/scavenger/pkg/types"
 	"go.mongodb.org/mongo-driver/v2/bson"
 	"go.mongodb.org/mongo-driver/v2/mongo"
 )
@@ -81,10 +81,49 @@ func NewLocalServiceProvider(config *types.ScavengerConfig, db *mongo.Client, ct
 	return provider, nil
 }
 
+func (l *LocalServiceProvider) CheckWorkflowExists(workflowName string) (bool, error) {
+	filterArgs := filters.NewArgs()
+	filterArgs.Add("status", "running")
+	filterArgs.Add("label", "app.scavenger")
+
+	containers, err := l.dockerClient.ContainerList(l.ctx, container.ListOptions{Filters: filterArgs})
+	if err != nil {
+		return false, err
+	}
+
+	l.mu.Lock()
+	defer l.mu.Unlock()
+
+	for _, c := range containers {
+		if c.Labels == nil {
+			continue
+		}
+
+		runningWorkflowName, ok := c.Labels["app.scavenger.workflow"]
+		if ok && runningWorkflowName == workflowName {
+			return true, nil
+		}
+
+	}
+
+	return false, nil
+}
+
 func (l *LocalServiceProvider) Close() error {
 	if l.dockerClient != nil {
 		return l.dockerClient.Close()
 	}
+	return nil
+}
+
+func (l *LocalServiceProvider) CreateWorkflowFromConfig(workflow Workflow) error {
+	schemaBytes, err := json.Marshal(workflow.Schema)
+	if err != nil {
+		return err
+	}
+
+	err = l.createWorkflow(workflow, string(schemaBytes))
+
 	return nil
 }
 
@@ -94,14 +133,111 @@ func (l *LocalServiceProvider) CreateWorkflow(w http.ResponseWriter, r *http.Req
 		return err
 	}
 
-	imageName := "sthanguy/scavenger-scraper"
-	if l.Config.WorkerImage != "" {
-		imageName = l.Config.WorkerImage
-	}
-
 	schemaBytes, err := json.Marshal(workflow.Schema)
 	if err != nil {
 		return err
+	}
+
+	err = l.createWorkflow(*workflow, string(schemaBytes))
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (l *LocalServiceProvider) DeleteWorkflow(w http.ResponseWriter, r *http.Request) error {
+	err := r.ParseForm()
+	if err != nil {
+		l.logger.Error("failed to parse form for workflow deletion", "err", err)
+		return fmt.Errorf("failed to parse form: %w", err)
+	}
+
+	workflowName := r.PostForm.Get("workflowName")
+	if workflowName == "" {
+		return fmt.Errorf("workflowName is required")
+	}
+
+	l.mu.Lock()
+	containerID, ok := l.runningWorkflows[workflowName]
+	l.mu.Unlock()
+
+	if ok {
+		l.logger.Info("stopping docker container for workflow", "workflowName", workflowName, "container-id", containerID)
+
+		stopTimeout := 10 * time.Second
+		timeoutSeconds := int(stopTimeout.Seconds())
+
+		stopErr := l.dockerClient.ContainerStop(l.ctx, containerID, container.StopOptions{Timeout: &timeoutSeconds})
+		if stopErr != nil {
+			l.logger.Error("failed to stop docker container gracefully", "container-id", containerID, "err", stopErr)
+		} else {
+			l.logger.Info("docker container stopped gracefully", "container-id", containerID)
+		}
+
+		l.logger.Info("removing docker container", "workflowName", workflowName, "container-id", containerID)
+
+		removeOptions := container.RemoveOptions{
+			RemoveVolumes: true,
+			Force:         true,
+		}
+		removeErr := l.dockerClient.ContainerRemove(l.ctx, containerID, removeOptions)
+		if removeErr != nil {
+			l.logger.Error("failed to remove docker container", "container-id", containerID, "err", removeErr)
+		} else {
+			l.logger.Info("successfully removed docker container", "container-id", containerID)
+		}
+
+		l.mu.Lock()
+		delete(l.runningWorkflows, workflowName)
+		l.mu.Unlock()
+
+	} else {
+		l.logger.Warn("workflow not found in running workflows map for deletion (container likely not started by this provider instance or already stopped)", "workflowName", workflowName)
+	}
+
+	bsonFilter := bson.D{{Key: "name", Value: workflowName}}
+	result, dbErr := l.db.Database(l.Config.DatabaseName).Collection("workflows").DeleteOne(l.ctx, bsonFilter)
+	if dbErr != nil {
+		l.logger.Error("failed to delete workflow from DB", "name", workflowName, "err", dbErr)
+		return err
+	}
+
+	if result.DeletedCount == 0 {
+		l.logger.Warn("workflow not found in DB for deletion", "name", workflowName)
+	} else {
+		l.logger.Info("workflow deleted from DB", "name", workflowName)
+	}
+
+	http.Redirect(w, r, "http://localhost:3000/workflows", http.StatusSeeOther)
+
+	return nil
+}
+
+func (l *LocalServiceProvider) GetRunningWorkflows() (int, error) {
+	l.mu.Lock()
+	count := len(l.runningWorkflows)
+	l.mu.Unlock()
+
+	return count, nil
+}
+
+func (l *LocalServiceProvider) createWorkflow(workflow Workflow, schemaBytes string) error {
+	exists, err := l.CheckWorkflowExists(workflow.Name)
+	if err != nil {
+		if err != ErrNoWorkflowExists {
+			return err
+		}
+	}
+
+	if exists {
+		l.logger.Info("workflow already exists, skipping creation", "workflow-name", workflow.Name)
+		return nil // no-op because workflow already exists
+	}
+
+	imageName := "sthanguy/scavenger-scraper"
+	if l.Config.WorkerImage != "" {
+		imageName = l.Config.WorkerImage
 	}
 
 	envVars := []string{
@@ -246,83 +382,5 @@ func (l *LocalServiceProvider) CreateWorkflow(w http.ResponseWriter, r *http.Req
 	l.runningWorkflows[workflow.Name] = resp.ID
 	l.mu.Unlock()
 
-	http.Redirect(w, r, "/", http.StatusSeeOther)
-
 	return nil
-}
-
-func (l *LocalServiceProvider) DeleteWorkflow(w http.ResponseWriter, r *http.Request) error {
-	err := r.ParseForm()
-	if err != nil {
-		l.logger.Error("failed to parse form for workflow deletion", "err", err)
-		return fmt.Errorf("failed to parse form: %w", err)
-	}
-
-	workflowName := r.PostForm.Get("workflowName")
-	if workflowName == "" {
-		return fmt.Errorf("workflowName is required")
-	}
-
-	l.mu.Lock()
-	containerID, ok := l.runningWorkflows[workflowName]
-	l.mu.Unlock()
-
-	if ok {
-		l.logger.Info("stopping docker container for workflow", "workflowName", workflowName, "container-id", containerID)
-
-		stopTimeout := 10 * time.Second
-		timeoutSeconds := int(stopTimeout.Seconds())
-
-		stopErr := l.dockerClient.ContainerStop(l.ctx, containerID, container.StopOptions{Timeout: &timeoutSeconds})
-		if stopErr != nil {
-			l.logger.Error("failed to stop docker container gracefully", "container-id", containerID, "err", stopErr)
-		} else {
-			l.logger.Info("docker container stopped gracefully", "container-id", containerID)
-		}
-
-		l.logger.Info("removing docker container", "workflowName", workflowName, "container-id", containerID)
-
-		removeOptions := container.RemoveOptions{
-			RemoveVolumes: true,
-			Force:         true,
-		}
-		removeErr := l.dockerClient.ContainerRemove(l.ctx, containerID, removeOptions)
-		if removeErr != nil {
-			l.logger.Error("failed to remove docker container", "container-id", containerID, "err", removeErr)
-		} else {
-			l.logger.Info("successfully removed docker container", "container-id", containerID)
-		}
-
-		l.mu.Lock()
-		delete(l.runningWorkflows, workflowName)
-		l.mu.Unlock()
-
-	} else {
-		l.logger.Warn("workflow not found in running workflows map for deletion (container likely not started by this provider instance or already stopped)", "workflowName", workflowName)
-	}
-
-	bsonFilter := bson.D{{Key: "name", Value: workflowName}}
-	result, dbErr := l.db.Database(l.Config.DatabaseName).Collection("workflows").DeleteOne(l.ctx, bsonFilter)
-	if dbErr != nil {
-		l.logger.Error("failed to delete workflow from DB", "name", workflowName, "err", dbErr)
-		return err
-	}
-
-	if result.DeletedCount == 0 {
-		l.logger.Warn("workflow not found in DB for deletion", "name", workflowName)
-	} else {
-		l.logger.Info("workflow deleted from DB", "name", workflowName)
-	}
-
-	http.Redirect(w, r, "http://localhost:3000/workflows", http.StatusSeeOther)
-
-	return nil
-}
-
-func (l *LocalServiceProvider) GetRunningWorkflows() (int, error) {
-	l.mu.Lock()
-	count := len(l.runningWorkflows)
-	l.mu.Unlock()
-
-	return count, nil
 }

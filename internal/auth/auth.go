@@ -13,7 +13,7 @@ import (
 	"net/http"
 	"sync"
 
-	"github.com/ferretcode/scavenger/internal/types"
+	"github.com/ferretcode/scavenger/pkg/types"
 	"go.mongodb.org/mongo-driver/v2/bson"
 	"go.mongodb.org/mongo-driver/v2/mongo"
 )
@@ -152,10 +152,23 @@ func hashToken(plaintextToken string) []byte {
 	return hash[:]
 }
 
-func (a *AuthService) RequireAPIKey(ctx context.Context, db *mongo.Client, logger *slog.Logger) func(http.Handler) http.Handler {
+func (a *AuthService) RequireAPIKey(ctx context.Context, db *mongo.Client, logger *slog.Logger, config *types.ScavengerConfig) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			apiKey := r.Header.Get("X-API-Key")
+
+			if config.Mode == "headless" {
+				comparisonResult := subtle.ConstantTimeCompare([]byte(apiKey), []byte(config.HeadlessApiKey))
+
+				if comparisonResult != 1 {
+					http.Error(w, "incorrect api key", http.StatusUnauthorized)
+					return
+				}
+
+				next.ServeHTTP(w, r)
+
+				return
+			}
 
 			hash := hashToken(apiKey)
 			encoded := base64.StdEncoding.EncodeToString(hash)

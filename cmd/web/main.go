@@ -14,11 +14,11 @@ import (
 
 	"github.com/caarlos0/env/v11"
 	"github.com/ferretcode/scavenger/internal/auth"
-	"github.com/ferretcode/scavenger/internal/dashboard"
+	"github.com/ferretcode/scavenger/internal/bootstrap"
 	"github.com/ferretcode/scavenger/internal/infrastructure"
-	"github.com/ferretcode/scavenger/internal/types"
 	"github.com/ferretcode/scavenger/internal/websocket"
 	"github.com/ferretcode/scavenger/internal/workflow"
+	"github.com/ferretcode/scavenger/pkg/types"
 	"github.com/go-chi/chi/v5"
 	"github.com/joho/godotenv"
 	"go.mongodb.org/mongo-driver/v2/bson"
@@ -95,20 +95,15 @@ func main() {
 	defer cancel()
 	_ = db.Ping(pingCtx, readpref.Primary())
 
-	r := chi.NewRouter()
-
-	type DashboardLastTwo struct {
-		DocScraped  int
-		CliConnects int
-	}
-
-	lastTwoCards := DashboardLastTwo{
+	dashboardCardData := types.DashboardCardData{
 		DocScraped:  0,
 		CliConnects: 0,
 	}
 
+	r := chi.NewRouter()
+
 	authService := auth.NewAuthService(&config)
-	websocketService := websocket.NewWebsocketService(&config, db, logger, ctx, &lastTwoCards.CliConnects, &lastTwoCards.DocScraped)
+	websocketService := websocket.NewWebsocketService(&config, db, logger, ctx, &dashboardCardData)
 	var serviceProvider infrastructure.ServiceProvider
 
 	switch strings.ToLower(config.Provider) {
@@ -120,95 +115,38 @@ func main() {
 		}
 		break
 	case "local":
-		serviceProvider, err = infrastructure.NewLocalServiceProvider(&config, db, ctx, logger)
+		localServiceProvider, err := infrastructure.NewLocalServiceProvider(&config, db, ctx, logger)
 		if err != nil {
 			logger.Error("error initializing local provider", "err", err)
 			return
 		}
+		defer localServiceProvider.Close()
+		serviceProvider = localServiceProvider
+
+		errors := bootstrap.Bootstrap(serviceProvider, logger)
+		for _, err := range errors {
+			if err != nil {
+				logger.Error("error bootstrapping workflows from configuration", "err", err)
+				return
+			}
+		}
+
+		break
 	default:
 		logger.Error("error selecting provider. invalid provider provided")
 	}
 
-	r.With(authService.RequireAuth).Get("/", func(w http.ResponseWriter, r *http.Request) {
-		workflows, err := getWorkflows(db)
-		if err != nil {
-			handleError(err, w, "index")
-			return
-		}
-
-		data := dashboard.DashboardData{
-			Workflows:   workflows,
-			TopCardData: dashboard.GetTopDashData(serviceProvider, ctx),
-		}
-
-		data.TopCardData = dashboard.GetTopDashData(serviceProvider, ctx)
-		data.TopCardData.DocumentsScraped = lastTwoCards.DocScraped
-		data.TopCardData.ClientConnections = lastTwoCards.CliConnects
-		handleError(templates.ExecuteTemplate(w, "dashboard.html", data), w, "dashboard/render")
-	})
-
-	// healthcheck for startup probe
-	r.Get("/healthz", func(w http.ResponseWriter, r *http.Request) {
-		w.WriteHeader(200)
-		w.Write([]byte("OK"))
-	})
-
-	r.Route("/workflows", func(r chi.Router) {
-		r.Use(authService.RequireAuth)
-
-		r.Get("/", func(w http.ResponseWriter, r *http.Request) {
-			workflows, err := getWorkflows(db)
-			if err != nil {
-				handleError(err, w, "workflows/fetch")
-				return
-			}
-
-			data := dashboard.DashboardData{
-				Workflows:   workflows,
-				TopCardData: dashboard.GetTopDashData(serviceProvider, ctx),
-			}
-
-			handleError(templates.ExecuteTemplate(w, "workflows.html", data), w, "workflows/render")
-		})
-
-		r.Post("/create", func(w http.ResponseWriter, r *http.Request) {
-			handleError(serviceProvider.CreateWorkflow(w, r), w, "workflow/create")
-		})
-
-		r.Post("/delete", func(w http.ResponseWriter, r *http.Request) {
-			handleError(serviceProvider.DeleteWorkflow(w, r), w, "workflow/delete")
-		})
-	})
-
-	r.With(authService.RequireAPIKey(ctx, db, logger)).Get("/connect/{workflow_name}", func(w http.ResponseWriter, r *http.Request) {
-		websocketService.HandleWorkflowConnection(w, r)
-	})
-
-	r.Route("/auth", func(r chi.Router) {
-		r.Get("/login", func(w http.ResponseWriter, r *http.Request) {
-			handleError(authService.RenderLogin(w, r, templates), w, "login/render")
-		})
-
-		r.Post("/login", func(w http.ResponseWriter, r *http.Request) {
-			handleError(authService.Login(w, r), w, "login")
-		})
-
-		r.Get("/logout", func(w http.ResponseWriter, r *http.Request) {
-			handleError(authService.Logout(w, r), w, "logout")
-		})
-
-		r.Route("/api", func(r chi.Router) {
-			r.Use(authService.RequireAuth)
-
-			r.Get("/", func(w http.ResponseWriter, r *http.Request) {
-				handleError(authService.RenderAPIKey(w, r, templates, nil), w, "api/render")
-			})
-
-			r.Post("/", func(w http.ResponseWriter, r *http.Request) {
-				handleError(authService.CreateAPIKey(w, r, db, templates, ctx), w, "api")
-			})
-		})
-	})
+	registerRoutes(
+		r,
+		Services{
+			AuthService:      authService,
+			ServiceProvider:  serviceProvider,
+			WebsocketService: websocketService,
+		},
+		db,
+		ctx,
+		&dashboardCardData,
+	)
 
 	log.Println("Running web server http://localhost:3000")
 	err = http.ListenAndServe(":3000", r)
